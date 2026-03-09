@@ -1,0 +1,38 @@
+{
+  "O2u": {
+    "heading_rad": 1.193955,
+    "heading_deg": 68.41,
+    "scale": 2,
+    "grid": 128
+  },
+  "S1s": {
+    "heading_rad": 0.916382,
+    "heading_deg": 52.5,
+    "scale": 2,
+    "grid": 128
+  },
+  "P4al": {
+    "heading_rad": -0.876683,
+    "heading_deg": -50.23,
+    "scale": 2,
+    "grid": 128
+  },
+  "K6s": {
+    "heading_rad": -0.908664,
+    "heading_deg": -52.06,
+    "scale": 2,
+    "grid": 128
+  },
+  "K4s": {
+    "heading_rad": -0.707808,
+    "heading_deg": -40.55,
+    "scale": 2,
+    "grid": 128
+  },
+  "O2v": {
+    "heading_rad": 0.905813,
+    "heading_deg": 51.9,
+    "scale": 2,
+    "grid": 128
+  }
+}

@@ -1,0 +1,66 @@
+#!/bin/bash
+# Dispatch a command to the cluster as a SLURM job.
+#
+# Usage:
+#   ./dispatch "python experiments/sweep.py --code O2u --grid 32 --scale 3 --size 2 --orientations 5"
+#   ./dispatch "python learning/train_curriculum.py --stages 5 4 3 2 1 --max-episodes 5000"
+#
+# Options:
+#   --interactive    Get a shell on a GPU node instead
+#   --time HH:MM:SS Override wall time (default: 04:00:00)
+#   --gpus N         Number of GPUs (default: 1)
+#   --h200           Require H200 GPU (default: prefer H200)
+#   --preempt        Submit to preempt partition (preemptible, more nodes)
+
+REMOTE="cluster"
+REMOTE_DIR="/cluster/home/jcool01/pettilab/jcool01/Lenia"
+
+# Defaults
+TIME="04:00:00"
+GPUS=1
+INTERACTIVE=false
+H200=false
+PETTILAB=false
+PREEMPT=false
+
+# Parse flags
+while [[ "$1" == --* ]]; do
+    case "$1" in
+        --interactive) INTERACTIVE=true; shift ;;
+        --time) TIME="$2"; shift 2 ;;
+        --gpus) GPUS="$2"; shift 2 ;;
+        --h200) H200=true; shift ;;
+        --pettilab) PETTILAB=true; shift ;;
+        --preempt) PREEMPT=true; shift ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+done
+
+if $INTERACTIVE; then
+    echo "Requesting interactive GPU session..."
+    ssh -t "$REMOTE" "salloc --partition=pettilab --gres=gpu:$GPUS --cpus-per-task=4 --mem=64G --time=$TIME"
+    exit 0
+fi
+
+CMD="$*"
+if [ -z "$CMD" ]; then
+    echo "Usage: ./dispatch \"python your_script.py --args\""
+    echo "       ./dispatch --interactive"
+    exit 1
+fi
+
+echo "Submitting: $CMD"
+SBATCH_EXTRA=""
+if $PETTILAB; then
+    SBATCH_EXTRA="--partition=pettilab"
+    echo "(Partition: pettilab)"
+fi
+if $PREEMPT; then
+    SBATCH_EXTRA="$SBATCH_EXTRA --partition=preempt"
+    echo "(Partition: preempt)"
+fi
+if $H200; then
+    SBATCH_EXTRA="$SBATCH_EXTRA --constraint=h200"
+    echo "(Requiring H200)"
+fi
+ssh "$REMOTE" "cd $REMOTE_DIR && sbatch --export=CMD='$CMD' --time=$TIME --gres=gpu:$GPUS $SBATCH_EXTRA cluster/job.slurm"

@@ -1,0 +1,45 @@
+# All results/outputs go here (except FINDINGS)
+results/*
+!results/FINDINGS/
+
+# Ignore old files/directories
+old/
+
+# Ignore metaLenia related files
+metalenia/
+
+# Model weights
+*.pt
+# But track initializations and orbits outputs
+!initializations/**/*.pt
+!orbits/**/*.pt
+
+# Ignore media files
+*.mp4
+*.gif
+*.png
+# But track initializations previews
+!initializations/**/*.png
+*.jpg
+*.jpeg
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.mkv
+
+# Ignore other common outputs
+*.log
+*.tmp
+__pycache__/
+*.pyc
+
+# Cluster logs
+cluster/logs/
+
+# macOS
+.DS_Store
+._*
+.claude/
+syncwatch

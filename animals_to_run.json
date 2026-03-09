@@ -1,0 +1,52 @@
+{
+  "animals": [
+    {
+      "code": "O2u",
+      "base_grid": 48,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "S1s",
+      "base_grid": 32,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "H3s",
+      "base_grid": 96,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "P4al",
+      "base_grid": 128,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "K6s",
+      "base_grid": 64,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "K4s",
+      "base_grid": 64,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "3R4s",
+      "base_grid": 128,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    },
+    {
+      "code": "O2v",
+      "base_grid": 48,
+      "sizes": [1, 2, 3, 4],
+      "scales": [1, 2, 3, 4]
+    }
+  ]
+}
