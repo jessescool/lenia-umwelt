@@ -29,15 +29,20 @@ def prepare_profile(grid: torch.Tensor, m: int, threshold: float = 0.0) -> torch
 
 
 def _prepare_profile_batched(grids: torch.Tensor, m: int, threshold: float = 0.0) -> torch.Tensor:
-    """Vectorized batch path for prepare_profile."""
+    """Vectorized batch path for prepare_profile.
+
+    Uses topk instead of full sort — avoids allocating [B, H*W] sorted +
+    indices tensors (saves ~3× [B, N] memory).
+    """
     B, H, W = grids.shape
     N = H * W
     flat = grids.reshape(B, N)
-    # Mask sub-threshold values to zero so they sort to the tail
-    flat = flat.clone()
-    flat[flat <= threshold] = 0.0
-    sorted_desc, _ = torch.sort(flat, dim=1, descending=True)  # nonzeros first
-    return sorted_desc[:, :m].contiguous()  # compact copy; slice shares full (B, H*W) storage
+    k = min(m, N)
+    vals, _ = torch.topk(flat, k, dim=1, sorted=True)
+    # Zero sub-threshold values (only matters when creature has < m pixels above threshold)
+    if threshold > 0:
+        vals = torch.where(vals > threshold, vals, torch.zeros_like(vals))
+    return vals[:, :m].contiguous()
 
 
 def _to_profiles(x: torch.Tensor, m: int, threshold: float) -> torch.Tensor:

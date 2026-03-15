@@ -54,10 +54,12 @@ SBATCH_EXTRA=""
 if $PETTILAB; then
     SBATCH_EXTRA="--partition=pettilab"
     echo "(Partition: pettilab)"
-fi
-if $PREEMPT; then
-    SBATCH_EXTRA="$SBATCH_EXTRA --partition=preempt"
+elif $PREEMPT; then
+    SBATCH_EXTRA="--partition=preempt --prefer=h200"
     echo "(Partition: preempt)"
+else
+    # default gpu partition — prefer h200
+    SBATCH_EXTRA="--prefer=h200"
 fi
 if $H200; then
     SBATCH_EXTRA="$SBATCH_EXTRA --constraint=h200"

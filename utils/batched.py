@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import List, Tuple
 
 import torch
+from torch.fft import rfft2, irfft2
 
 from substrate.lenia import Automaton
 from metrics_and_machinery import Intervention
@@ -19,9 +20,13 @@ def rollout_batched(
     collect_every: int = 1,
     *,
     blind_masks: torch.Tensor | None = None,
-    transient_blind_masks: torch.Tensor | None = None,
+    blind_duration: int | None = None,
 ) -> torch.Tensor:
-    """Run B simulations for n_steps, collecting frames."""
+    """Run B simulations for n_steps, collecting frames.
+
+    blind_masks:    [B, H, W] blind region masks (or None).
+    blind_duration: None = persistent (all steps), N = steps 0..N-1.
+    """
     B, H, W = states.shape
     n_collected = (n_steps + collect_every - 1) // collect_every
 
@@ -31,24 +36,33 @@ def rollout_batched(
     current = states  # Caller already clones; avoid double-clone
     frame_idx = 0
 
-    # Frame collection with off-by-one handling:
-    # - We collect at step 0, collect_every, 2*collect_every, ...
-    # - If n_steps isn't divisible by collect_every, the final state
-    #   after all steps may not have been collected, so we grab it at the end.
+    # Pre-compute vis_weight once for any non-None masks.
+    # The blind mask is static, so vis_weight is identical every active step.
+    precomputed_vis_weight = None
+    if blind_masks is not None:
+        kfft = automaton._rebuild_kernel_fft(H, W)
+        visible = 1.0 - blind_masks
+        vis_fft = rfft2(visible) * kfft
+        precomputed_vis_weight = irfft2(vis_fft, s=(H, W))
+        del visible, vis_fft
+
     for step in range(n_steps):
         if step % collect_every == 0:
             frames[:, frame_idx] = current
             frame_idx += 1
-        # Transient blind: merge with persistent masks on step 0 only
-        if step == 0 and transient_blind_masks is not None:
-            step_masks = (
-                torch.maximum(blind_masks, transient_blind_masks)
-                if blind_masks is not None
-                else transient_blind_masks
-            )
-        else:
+        # Active check: masks apply on steps 0..duration-1 (or all steps if None)
+        if blind_masks is not None and (blind_duration is None or step < blind_duration):
             step_masks = blind_masks
-        current = automaton.step_batched(current, blind_masks=step_masks)
+            step_vw = precomputed_vis_weight
+        else:
+            step_masks = None
+            step_vw = None
+        current = automaton.step_batched(current, blind_masks=step_masks, vis_weight=step_vw)
+        # Reclaim GPU memory after blind period ends
+        if precomputed_vis_weight is not None and blind_duration is not None and step == blind_duration - 1:
+            del precomputed_vis_weight, blind_masks
+            precomputed_vis_weight = None
+            blind_masks = None
 
     # Collect final frame if loop didn't land on it
     if frame_idx < n_collected:
@@ -63,7 +77,8 @@ def rollout_batched_with_ctrl(
     automaton: Automaton,
     n_steps: int,
     *,
-    transient_blind_masks: torch.Tensor | None = None,
+    blind_masks: torch.Tensor | None = None,
+    blind_duration: int | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Run B test + 1 control simulation as a combined batch."""
     B, H, W = test_states.shape
@@ -71,16 +86,17 @@ def rollout_batched_with_ctrl(
     # Combine test and ctrl into single batch: [B+1, H, W]
     combined = torch.cat([test_states, ctrl_state.unsqueeze(0)], dim=0)
 
-    # Pad transient masks with a zero row for the ctrl slot
-    combined_transient = None
-    if transient_blind_masks is not None:
-        ctrl_pad = torch.zeros(1, H, W, device=transient_blind_masks.device,
-                               dtype=transient_blind_masks.dtype)
-        combined_transient = torch.cat([transient_blind_masks, ctrl_pad], dim=0)
+    # Pad blind masks with a zero row for the ctrl slot
+    combined_masks = None
+    if blind_masks is not None:
+        ctrl_pad = torch.zeros(1, H, W, device=blind_masks.device,
+                               dtype=blind_masks.dtype)
+        combined_masks = torch.cat([blind_masks, ctrl_pad], dim=0)
 
     combined_frames = rollout_batched(
         combined, automaton, n_steps,
-        transient_blind_masks=combined_transient,
+        blind_masks=combined_masks,
+        blind_duration=blind_duration,
     )  # [B+1, T, H, W]
 
     test_frames = combined_frames[:-1]  # [B, T, H, W]
@@ -97,7 +113,8 @@ def rollout_online_metrics(
     *,
     orbit_c_bar: torch.Tensor,
     orbit_m: int,
-    transient_blind_masks: torch.Tensor | None = None,
+    blind_masks: torch.Tensor | None = None,
+    blind_duration: int | None = None,
 ) -> dict:
     """Fused simulation + per-frame metrics -- no frame storage.
 
@@ -111,11 +128,21 @@ def rollout_online_metrics(
     # Combine test and ctrl into single batch: [B+1, H, W]
     current = torch.cat([test_states, ctrl_state.unsqueeze(0)], dim=0)
 
-    # Pad transient masks with a zero row for the ctrl slot
-    combined_transient = None
-    if transient_blind_masks is not None:
+    # Pad blind masks with a zero row for the ctrl slot
+    combined_masks = None
+    if blind_masks is not None:
         ctrl_pad = torch.zeros(1, H, W, device=device, dtype=dtype)
-        combined_transient = torch.cat([transient_blind_masks, ctrl_pad], dim=0)
+        combined_masks = torch.cat([blind_masks, ctrl_pad], dim=0)
+
+    # Pre-compute vis_weight once for any non-None masks.
+    # The blind mask is static, so vis_weight is identical every active step.
+    precomputed_vis_weight = None
+    if combined_masks is not None:
+        kfft = automaton._rebuild_kernel_fft(H, W)
+        visible = 1.0 - combined_masks
+        vis_fft = rfft2(visible) * kfft
+        precomputed_vis_weight = irfft2(vis_fft, s=(H, W))
+        del visible, vis_fft
 
     # Move orbit barycenter to device once
     c_bar_dev = orbit_c_bar.to(device)
@@ -142,12 +169,19 @@ def rollout_online_metrics(
         # Ctrl frame: single control trajectory
         ctrl_frames_gpu[step] = current[-1]
 
-        # Advance simulation
-        if step == 0 and combined_transient is not None:
-            step_masks = combined_transient
+        # Advance simulation — masks active for steps 0..duration-1 (or all if None)
+        if combined_masks is not None and (blind_duration is None or step < blind_duration):
+            step_masks = combined_masks
+            step_vw = precomputed_vis_weight
         else:
             step_masks = None
-        current = automaton.step_batched(current, blind_masks=step_masks)
+            step_vw = None
+        current = automaton.step_batched(current, blind_masks=step_masks, vis_weight=step_vw)
+        # Reclaim GPU memory after blind period ends
+        if precomputed_vis_weight is not None and blind_duration is not None and step == blind_duration - 1:
+            del precomputed_vis_weight, combined_masks
+            precomputed_vis_weight = None
+            combined_masks = None
 
     # Single bulk GPU -> CPU transfer (replaces ~900 per-step sync points)
     centroids = centroids_gpu.cpu()
@@ -162,7 +196,7 @@ def rollout_online_metrics(
     }
 
 
-def build_transient_blind_masks(
+def build_blind_masks(
     intervention: Intervention,
     shape: Tuple[int, int],
     positions: list[Tuple[int, int]],
@@ -170,15 +204,13 @@ def build_transient_blind_masks(
     device: torch.device,
     dtype: torch.dtype,
 ) -> torch.Tensor | None:
-    """Build [B, H, W] transient blind masks if the intervention supports it."""
-    # Quick probe: does this intervention produce transient barriers?
-    probe = intervention.transient_barrier(
+    """Build [B, H, W] blind masks if the intervention supports it."""
+    probe = intervention.barrier(
         shape, {'x': 0, 'y': 0}, device=device, dtype=dtype,
     )
     if probe is None:
         return None
 
-    # BlindEraseIntervention inherits masks_batched from SquareEraseIntervention
     return intervention.masks_batched(shape, positions, device=device, dtype=dtype)
 
 

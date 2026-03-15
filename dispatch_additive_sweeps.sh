@@ -9,7 +9,7 @@ dispatch_sweeps() {
         local code=${pair%% *} crop=${pair##* }
         for size in 1 2 3 4; do
             for ori in 0 1 2; do
-                ./dispatch --h200 "python experiments/sweep.py --situation initializations/$code/s$scale/${code}_s${scale}_o${ori}.pt --code $code --grid 128 --crop $crop --size $size --scale $scale --shortcut --fft --intervention-type additive --intensity 1.0 --output-dir results/additive/$code/${code}_x${scale}_i${size}_o${ori}"
+                ./dispatch --h200 "python experiments/sweep.py --situation initializations/$code/s$scale/${code}_s${scale}_o${ori}.pt --code $code --grid 128 --crop $crop --size $size --scale $scale --shortcut --intervention-type additive --intensity 1.0 --output-dir results/additive/$code/${code}_x${scale}_i${size}_o${ori}"
             done
         done
     done

@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=lenia
 #SBATCH --partition=gpu
-#SBATCH --prefer=h200
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G

@@ -30,8 +30,8 @@ from metrics_and_machinery.interventions import (
     ActionParam,
     SquareEraseIntervention,
     BlindEraseIntervention,
+    SquareBlindIntervention,
     SquareAdditiveIntervention,
-    BarrierIntervention,
     make_intervention,
 )
 
@@ -67,8 +67,9 @@ __all__ = [
     "heading_change", "speed_change", "recovery_directness",
     "count_peaks", "time_above_threshold", "time_above_threshold_integral",
     "Intervention", "ActionParam", "SquareEraseIntervention",
-    "BlindEraseIntervention", "SquareAdditiveIntervention",
-    "BarrierIntervention", "make_intervention",
+    "BlindEraseIntervention", "SquareBlindIntervention",
+    "SquareAdditiveIntervention",
+    "make_intervention",
     "is_dead", "is_stable", "has_recovered", "time_to_recovery",
     "DamageMetric", "WindowedDamage", "WassersteinRecoveryReward",
     "compute_damage", "compute_detection_frame", "compute_timing_windows",

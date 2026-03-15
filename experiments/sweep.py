@@ -26,7 +26,7 @@ from viz.gif import write_gif, render_convergence_gif
 from utils.batched import (
     rollout_batched_with_ctrl,
     rollout_online_metrics,
-    build_transient_blind_masks,
+    build_blind_masks,
     apply_interventions_batched,
     estimate_batch_size,
 )
@@ -96,8 +96,8 @@ def _compute_trajectory_stats_batched(
     heading_vec_rel = np.zeros((B, 2), dtype=np.float32)
     max_distance = np.zeros(B, dtype=np.float32)
 
-    alive_mask = outcomes != 0
-    alive_indices = alive_mask.nonzero(as_tuple=True)[0]
+    recovered_mask = outcomes == 1  # only recovered; exclude died (0) and never_recovered (2)
+    alive_indices = recovered_mask.nonzero(as_tuple=True)[0]
     B_alive = len(alive_indices)
 
     if B_alive == 0:
@@ -179,6 +179,7 @@ def sweep(
     recovery_threshold: float = 0.002201,
     shortcut: bool = False,
     orbit_data: dict = None,
+    blind_duration: int | None = None,
 ) -> GridSearchResult:
     """
     Test every grid position using GPU batching.
@@ -244,8 +245,8 @@ def sweep(
             initial_state, batch_positions, intervention
         )
 
-        # Build transient blind masks (None for plain erase/additive)
-        transient_blind = build_transient_blind_masks(
+        # Build blind masks (None for plain erase/additive)
+        blind = build_blind_masks(
             intervention, (H, W), batch_positions,
             device=device, dtype=initial_state.dtype,
         )
@@ -257,25 +258,26 @@ def sweep(
             n_steps=total_steps,
             orbit_c_bar=orbit_data['c_bar'],
             orbit_m=orbit_data['m'],
+            blind_duration=blind_duration,
         )
         try:
             metrics = rollout_online_metrics(
                 test_states, **rollout_kwargs,
-                transient_blind_masks=transient_blind,
+                blind_masks=blind,
             )
         except (torch.cuda.OutOfMemoryError if hasattr(torch.cuda, 'OutOfMemoryError') else RuntimeError):
             # OOM: halve the batch, process in two parts
             torch.cuda.empty_cache()
             mid = B // 2
-            tb1 = transient_blind[:mid] if transient_blind is not None else None
-            tb2 = transient_blind[mid:] if transient_blind is not None else None
+            b1 = blind[:mid] if blind is not None else None
+            b2 = blind[mid:] if blind is not None else None
             m1 = rollout_online_metrics(
                 test_states[:mid], **rollout_kwargs,
-                transient_blind_masks=tb1,
+                blind_masks=b1,
             )
             m2 = rollout_online_metrics(
                 test_states[mid:], **rollout_kwargs,
-                transient_blind_masks=tb2,
+                blind_masks=b2,
             )
             # Merge: distances/mass on GPU, centroids/ctrl_frames on CPU
             metrics = {
@@ -288,7 +290,7 @@ def sweep(
                 'mass': torch.cat([m1['mass'], m2['mass']], dim=0),
                 'ctrl_frames': m1['ctrl_frames'],    # ctrl is identical
             }
-            del m1, m2, tb1, tb2
+            del m1, m2, b1, b2
 
         batch_distances = metrics['distances']  # [B, T] GPU
 
@@ -459,8 +461,9 @@ def _generate_top_k_gifs(
     subdir: str = "top_k_gifs",
     situation_tensor: torch.Tensor = None,
     upscale: int = 4,
-    fft: bool = False,
+    fft: bool = True,
     prefix: str = "",
+    blind_duration: int | None = None,
 ) -> None:
     """Re-run top-K positions and generate single-panel test GIFs."""
     gifs_dir = output_dir / subdir
@@ -472,8 +475,8 @@ def _generate_top_k_gifs(
     positions = [(x, y) for x, y, *_ in ranked]
     test_states, _ = apply_interventions_batched(situation_tensor, positions, intervention)
 
-    # Build transient blind masks (None for plain erase/additive)
-    transient_blind = build_transient_blind_masks(
+    # Build blind masks (None for plain erase/additive)
+    blind = build_blind_masks(
         intervention, situation_tensor.shape, positions,
         device=lenia_cfg.device, dtype=lenia_cfg.dtype,
     )
@@ -481,7 +484,8 @@ def _generate_top_k_gifs(
     # Batched rollout
     test_frames, ctrl_frames = rollout_batched_with_ctrl(
         test_states, situation_tensor, Automaton(lenia_cfg, fft=fft), total_steps,
-        transient_blind_masks=transient_blind,
+        blind_masks=blind,
+        blind_duration=blind_duration,
     )
     # Convert to CPU, free GPU
     test_cpu = test_frames.cpu()
@@ -500,8 +504,7 @@ def _generate_top_k_gifs(
 
 
 def _load_orbit_data(code: str, scale: int) -> dict:
-    """Load orbit summary data, falling back to JSON sidecar for old files."""
-    import json as _json
+    """Load orbit summary data for a creature at the given scale."""
     orbit_path = Path(f"orbits/{code}/s{scale}/{code}_s{scale}_orbit.pt")
     if not orbit_path.exists():
         raise FileNotFoundError(
@@ -509,14 +512,6 @@ def _load_orbit_data(code: str, scale: int) -> dict:
             f"Run:  python orbits/orbits.py orbit ..."
         )
     orbit_data = torch.load(orbit_path, weights_only=False)
-    # Older orbit files may lack sigma/c_hat; pull from JSON sidecar
-    if "sigma" not in orbit_data or "c_hat" not in orbit_data:
-        json_path = orbit_path.with_suffix(".json")
-        if json_path.exists():
-            jd = _json.loads(json_path.read_text())
-            for k in ("c_hat", "sigma"):
-                if k in jd and k not in orbit_data:
-                    orbit_data[k] = jd[k]
     return orbit_data
 
 
@@ -524,12 +519,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Exhaustive grid search for recovery time mapping"
     )
-    parser.add_argument("--situation", type=Path, required=True,
-                        help="Path to a situation .pt file (from orbits.py situations)")
+    parser.add_argument("--init", type=Path, required=True,
+                        help="Path to an initialization .pt file (from generate_initializations.py)")
     parser.add_argument("--code", default="O2u", help="Animal code (default: O2u)")
     parser.add_argument("--size", type=int, default=2, help="Intervention size NxN at base resolution (default: 2)")
     parser.add_argument("--grid", type=int, default=128, help="Base grid size (default: 128)")
-    parser.add_argument("--intervention-type", choices=["erase", "additive", "blind_erase"], default="erase",
+    parser.add_argument("--intervention-type", choices=["erase", "additive", "blind_erase", "blind"], default="erase",
                         help="Intervention type (default: erase)")
     parser.add_argument("--intensity", type=float, default=0.3,
                         help="Intensity for additive intervention (default: 0.3)")
@@ -544,18 +539,23 @@ def main():
                         help="Only test non-zero pixels (faster)")
     parser.add_argument("--no-gifs", action="store_true",
                         help="Skip GIF generation (saves time for large grids)")
-    parser.add_argument("--fft", action="store_true",
-                        help="Use FFT convolution (faster at large scales, default: spatial conv2d)")
+    parser.add_argument("--conv", action="store_true",
+                        help="Use spatial conv2d instead of FFT (default: FFT)")
     parser.add_argument("--crop", type=int, default=None,
                         help="Crop size for heatmap plots (base px, before scaling). "
                              "Defaults to --grid value. Use creature's cropped_grid to zoom in.")
+    parser.add_argument("--duration", type=int, default=None,
+                        help="How many steps blind masks are active. "
+                             "-1 = persistent (all steps). Omit = use intervention default.")
+    parser.add_argument("--recovery-lambda", type=float, default=1.0,
+                        help="Multiplier on orbit d_max for recovery threshold (default: 1.0)")
 
     args = parser.parse_args()
     verbose = not args.quiet
 
-    if not args.situation.exists():
-        raise SystemExit(f"Situation file not found: {args.situation}")
-    sit = torch.load(args.situation, weights_only=False)
+    if not args.init.exists():
+        raise SystemExit(f"Initialization file not found: {args.init}")
+    sit = torch.load(args.init, weights_only=False)
     sit_tensor = sit['tensor']       # (H, W) CPU
     sit_idx = sit['sit_idx']
     sit_angle = sit['angle']
@@ -589,9 +589,17 @@ def main():
         batch_size = estimate_batch_size(actual_grid, warmup + window, lenia_cfg.device, online=True)
 
     orbit_data = _load_orbit_data(args.code, args.scale)
-    recovery_threshold = orbit_data['c_hat'] + 3 * orbit_data['sigma']
+    recovery_threshold = orbit_data['d_max'] * args.recovery_lambda
 
     intervention = make_intervention(args.intervention_type, actual_size, intensity=args.intensity)
+
+    # Resolve blind_duration: CLI override > intervention default
+    # -1 = persistent (None internally), omit = intervention default
+    blind_duration = (
+        None if args.duration == -1
+        else args.duration if args.duration is not None
+        else intervention.default_blind_duration
+    )
 
     if args.output_dir is None:
         output_dir = Path(f"results/sweep/{args.code}/{args.code}_x{args.scale}/{args.code}_x{args.scale}_i{args.size}")
@@ -613,18 +621,17 @@ def main():
         print(f"Grid: {H}x{W} = {H*W} positions" + (" (shortcut: non-zero only)" if args.shortcut else ""))
         print(f"Intervention: {actual_size}x{actual_size} {args.intervention_type}")
         print(f"Timing: warmup={warmup}, window={window}")
-        c_hat = orbit_data['c_hat']
-        sigma = orbit_data['sigma']
+        d_max = orbit_data['d_max']
         m = orbit_data['m']
-        print(f"Recovery: orbit-based (m={m}, ĉ={c_hat:.6f}, σ={sigma:.6f}, threshold=ĉ+3σ={recovery_threshold:.6f})")
-        print(f"Situation: {args.situation} (orientation {sit_idx}, {sit_angle:.1f}°)")
+        print(f"Recovery: orbit-based (m={m}, d_max={d_max:.6f})")
+        print(f"Init: {args.init} (orientation {sit_idx}, {sit_angle:.1f}°)")
         print(f"Batch size: {batch_size}")
         print(f"Device: {lenia_cfg.device}")
         if scale > 1:
             print(f"Scale: {scale}x (base grid: {base_grid})")
         print()
 
-    sim = Simulation(lenia_cfg, fft=args.fft)
+    sim = Simulation(lenia_cfg, fft=not args.conv)
     sim.board.tensor.copy_(sit_tensor.to(lenia_cfg.device))
 
     result = sweep(
@@ -638,6 +645,7 @@ def main():
         recovery_threshold=recovery_threshold,
         shortcut=args.shortcut,
         orbit_data=orbit_data,
+        blind_duration=blind_duration,
     )
 
     # Move centroid GPU tensors to CPU
@@ -674,8 +682,9 @@ def main():
                     subdir=subdir,
                     situation_tensor=situation_tensor_gpu,
                     upscale=gif_upscale,
-                    fft=args.fft,
+                    fft=not args.conv,
                     prefix=prefix,
+                    blind_duration=blind_duration,
                 )
 
     subtitle = f"size={args.size}  scale={scale}  intervention={args.intervention_type}  ori={sit_idx}"

@@ -28,7 +28,7 @@ import torch
 
 from substrate import Simulation, load_animals, Config
 from substrate.scaling import interpolate_pattern
-from experiments.environments import ENVIRONMENTS, make_env
+from environments import ENVIRONMENTS, load_env, make_env
 from viz.gif import write_gif
 
 
@@ -109,7 +109,7 @@ def run_single_env_from_init(env_name, code, base_grid, scale, steps,
 
         sim = Simulation(cfg)
 
-        mask = make_env(env_name, shape, cfg.device, cfg.dtype, scaled=scaled)
+        mask = load_env(env_name, cfg.device, cfg.dtype)
         sim.set_barrier(mask)
 
         pos = get_spawn_position(env_name, grid_h, grid_w, ph, pw)
@@ -160,7 +160,7 @@ def run_single_env(env_name, code, base_grid, scale, steps, output_dir, animal,
 
         sim = Simulation(cfg)
 
-        mask = make_env(env_name, shape, cfg.device, cfg.dtype, scaled=scaled)
+        mask = load_env(env_name, cfg.device, cfg.dtype)
         sim.set_barrier(mask)
 
         # Compute spawn position (using rotated pattern size)

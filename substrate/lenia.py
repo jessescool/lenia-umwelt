@@ -172,7 +172,7 @@ class Board:
             self._tensor[r_start:r_end, c_start:c_end] = src
 
 class Automaton:
-    def __init__(self, cfg: Config, *, fft: bool = False):
+    def __init__(self, cfg: Config, *, fft: bool = True):
         self.cfg = cfg
         self.use_fft = fft
         if cfg.kernel is not None:
@@ -305,11 +305,16 @@ class Automaton:
         states: torch.Tensor,
         *,
         blind_masks: torch.Tensor | None = None,
+        vis_weight: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Step B simulations forward in parallel.
 
         Default: spatial F.conv2d (canonical Lenia).
         Opt-in: FFT convolution (use_fft=True).
+
+        vis_weight: pre-computed renormalization denominator for persistent
+        blind masks.  When provided the two FFTs for the visibility field
+        are skipped, saving ~2× [B,H,W] peak memory per step.
         """
         cfg = self.cfg
         H, W = states.shape[1], states.shape[2]
@@ -319,12 +324,18 @@ class Automaton:
             kfft = self._rebuild_kernel_fft(H, W)
             if blind_masks.dim() == 2:
                 blind_masks = blind_masks.unsqueeze(0).expand_as(states)
-            visible = 1 - blind_masks
-            masked = states * visible
+            masked = states * (1 - blind_masks)
             exc_fft = rfft2(masked) * kfft          # broadcasts [B,H,W//2+1]
-            vis_fft = rfft2(visible) * kfft
+            del masked
             excitation = irfft2(exc_fft, s=(H, W))
-            vis_weight = irfft2(vis_fft, s=(H, W))
+            del exc_fft
+            if vis_weight is None:
+                # Fallback: compute on the fly (mixed transient+persistent masks)
+                visible = 1 - blind_masks
+                vis_fft = rfft2(visible) * kfft
+                del visible
+                vis_weight = irfft2(vis_fft, s=(H, W))
+                del vis_fft
             excitation = excitation / vis_weight.clamp(min=1e-6)
         elif self.use_fft:
             kfft = self._rebuild_kernel_fft(H, W)
@@ -344,7 +355,7 @@ class Lenia:
         self.tick = 0
 
     @classmethod
-    def from_config(cls, cfg: Config, *, fft: bool = False) -> "Lenia":
+    def from_config(cls, cfg: Config, *, fft: bool = True) -> "Lenia":
         """Construct a Lenia instance by instantiating board and automaton from Config."""
         board = Board(cfg)
         automaton = Automaton(cfg, fft=fft)

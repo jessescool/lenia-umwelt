@@ -109,7 +109,7 @@ def plot_recovery_status_map(
     sm = plt.cm.ScalarMappable(cmap=cmap_gradient, norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax, **_CBAR_KWARGS)
-    cbar.set_label('Recovery Time (normalized)', fontsize=10)
+    cbar.set_label('TTR (sim steps / T)', fontsize=10)
 
     legend_elements = [
         mpatches.Patch(facecolor=HEX_GREEN, edgecolor='black', label='Fast recovery'),

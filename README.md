@@ -71,7 +71,11 @@ A sweep requires an orbit file for the creature at the matching scale. Generate 
 
 # Different intervention types
 ./dispatch "python experiments/sweep.py --code O2u --grid 64 --size 2 --intervention-type blind_erase --shortcut --orientations 1 --output-dir results/grid_search/O2u_2x2_blind"
+./dispatch "python experiments/sweep.py --code O2u --grid 64 --size 2 --intervention-type blind --shortcut --orientations 1 --output-dir results/grid_search/O2u_2x2_blind_only"
 ./dispatch "python experiments/sweep.py --code O2u --grid 64 --size 2 --intervention-type additive --intensity 0.3 --shortcut --orientations 1 --output-dir results/grid_search/O2u_2x2_additive"
+
+# Duration control (blind/blind_erase only)
+./dispatch "python experiments/sweep.py --code O2u --grid 64 --size 2 --intervention-type blind_erase --duration -1 --shortcut --orientations 1 --output-dir results/grid_search/O2u_2x2_blind_erase_persistent"
 ```
 
 Sweep options:
@@ -79,7 +83,8 @@ Sweep options:
 - `--grid`: Base grid size (default: 64)
 - `--scale`: Upscale factor (default: 1)
 - `--size`: Intervention size NxN at base resolution (default: 2)
-- `--intervention-type`: `erase`, `additive`, or `blind_erase` (default: erase)
+- `--intervention-type`: `erase`, `blind_erase`, `blind`, or `additive` (default: erase)
+- `--duration`: How many steps blind masks are active; `-1` = persistent (all steps); omit = intervention default (1 for blind_erase, persistent for blind)
 - `--intensity`: Intensity for additive intervention (default: 0.3)
 - `--orientations`: Number of rotation orientations (default: 1)
 - `--shortcut`: Only test pixels with non-zero mass (much faster)

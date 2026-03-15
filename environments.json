@@ -1,0 +1,16 @@
+{
+  "environments": [
+    {"name": "chips", "file": "environments/chips.pt"},
+    {"name": "shuriken", "file": "environments/shuriken.pt"},
+    {"name": "pegs", "file": "environments/pegs.pt"},
+    {"name": "guidelines", "file": "environments/guidelines.pt"},
+    {"name": "membrane-1px", "file": "environments/membrane-1px.pt"},
+    {"name": "membrane-3px", "file": "environments/membrane-3px.pt"},
+    {"name": "capsule", "file": "environments/capsule.pt"},
+    {"name": "ring", "file": "environments/ring.pt"},
+    {"name": "box", "file": "environments/box.pt"},
+    {"name": "funnel", "file": "environments/funnel.pt"},
+    {"name": "corridor", "file": "environments/corridor.pt"},
+    {"name": "noise", "file": "environments/noise.pt"}
+  ]
+}

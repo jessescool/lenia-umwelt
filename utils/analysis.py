@@ -86,9 +86,14 @@ def rollout_parallel(
     *,
     warmup: int = 16,
     window: int = 16,
-    transient_blind: torch.Tensor | None = None,
+    blind_masks: torch.Tensor | None = None,
+    blind_duration: int | None = None,
 ) -> Tuple[Rollout, Rollout]:
-    """Roll out perturbed + unperturbed simulations in parallel."""
+    """Roll out perturbed + unperturbed simulations in parallel.
+
+    blind_masks:    2-D [H, W] blind mask for the test sim (or None).
+    blind_duration: None = persistent (all steps), N = steps 0..N-1.
+    """
     ctrl_board = Board(cfg)
     ctrl_board.tensor.copy_(control_state)
     ctrl_auto = Automaton(cfg, fft=sim.automaton.use_fft)
@@ -102,14 +107,13 @@ def rollout_parallel(
     total_steps = warmup + window
 
     for step in range(total_steps):
-        # Build blind mask for this step
-        # Test sim: merge persistent barrier + transient blind on step 0
-        if step == 0 and transient_blind is not None:
+        # Test sim: apply blind_masks for steps 0..duration-1 (or all if None)
+        if blind_masks is not None and (blind_duration is None or step < blind_duration):
             if barrier_mask is not None:
-                test_blind = torch.maximum(barrier_mask, transient_blind)
+                test_blind = torch.maximum(barrier_mask, blind_masks)
             else:
-                test_blind = transient_blind
-            blind_log[step] = transient_blind
+                test_blind = blind_masks
+            blind_log[step] = blind_masks
         else:
             test_blind = barrier_mask
 

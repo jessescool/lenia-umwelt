@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from substrate import Simulation, load_animals, Config
 from substrate.lenia import _auto_device
-from environments import ENVIRONMENTS, make_env
+from environments import ENVIRONMENTS, load_env
 from experiments.run_env_batch import extract_pattern, get_spawn_position, parse_grid
 from metrics_and_machinery.distance_metrics import prepare_profile
 from metrics_and_machinery.competency import orbit_residence_fraction, aggregate_competency
@@ -34,10 +34,10 @@ from viz.gif import write_gif
 
 # Default environments for the initial survey
 DEFAULT_ENVS = [
-    "chips", "shuriken", "pegs",
+    "pegs", "chips", "shuriken",
     "guidelines", "membrane-1px", "membrane-3px",
-    "capsule", "ring", "box",
-    "funnel", "corridor", "noise",
+    "box", "capsule", "ring",
+    "corridor", "funnel", "noise",
 ]
 
 # Competency threshold multiplier (wider than recovery lambda)
@@ -112,7 +112,7 @@ def run_one(
     if env_name == "open_field":
         mask = None
     else:
-        mask = make_env(env_name, shape, cfg.device, cfg.dtype, scaled=True)
+        mask = load_env(env_name, cfg.device, cfg.dtype)
         sim.set_barrier(mask)
 
     # Spawn creature
@@ -124,12 +124,20 @@ def run_one(
     # Pre-allocate metric tensors
     distances = torch.empty(n_metric_frames, device=device, dtype=torch.float32)
     mass_ts = torch.empty(n_metric_frames, device=device, dtype=torch.float32)
+    centroids = torch.empty(n_metric_frames, 2, device=device, dtype=torch.float32)
 
     # Run simulation, computing metrics online
     current = sim.board.tensor.detach().clone()
     automaton = sim.lenia.automaton
     barrier = mask  # [H, W] persistent barrier mask
     metric_idx = 0
+
+    # precompute trig arrays for centroid (avoids realloc every frame)
+    _row_angles = torch.arange(grid_h, device=device, dtype=torch.float32) * (2 * np.pi / grid_h)
+    _col_angles = torch.arange(grid_w, device=device, dtype=torch.float32) * (2 * np.pi / grid_w)
+    _sin_r, _cos_r = torch.sin(_row_angles), torch.cos(_row_angles)
+    _sin_c, _cos_c = torch.sin(_col_angles), torch.cos(_col_angles)
+    _TWO_PI = 2 * np.pi
 
     # GIF frame collection: target ~500 frames max
     gif_stride = max(1, steps // 500) if gif_path else 0
@@ -141,7 +149,25 @@ def run_one(
                 # Profile distance to c_bar
                 p = prepare_profile(current.unsqueeze(0), m)  # [1, m]
                 distances[metric_idx] = (p - c_bar).abs().mean()
-                mass_ts[metric_idx] = current.sum()
+                total = current.sum()
+                mass_ts[metric_idx] = total
+                # inline centroid using precomputed trig arrays
+                if total.item() > 1e-6:
+                    row_mass = current.sum(dim=1)
+                    col_mass = current.sum(dim=0)
+                    sr = (row_mass * _sin_r).sum() / total
+                    cr = (row_mass * _cos_r).sum() / total
+                    ang_r = torch.atan2(sr, cr)
+                    if ang_r < 0: ang_r += _TWO_PI
+                    sc = (col_mass * _sin_c).sum() / total
+                    cc = (col_mass * _cos_c).sum() / total
+                    ang_c = torch.atan2(sc, cc)
+                    if ang_c < 0: ang_c += _TWO_PI
+                    centroids[metric_idx, 0] = ang_r * grid_h / _TWO_PI
+                    centroids[metric_idx, 1] = ang_c * grid_w / _TWO_PI
+                else:
+                    centroids[metric_idx, 0] = grid_h / 2.0
+                    centroids[metric_idx, 1] = grid_w / 2.0
                 metric_idx += 1
 
             if gif_frames is not None and step % gif_stride == 0:
@@ -180,6 +206,7 @@ def run_one(
         'steps': steps,
         'metric_frames': metric_idx,
         'competency_threshold': competency_threshold,
+        'centroids': centroids[:metric_idx].cpu().numpy(),  # [T_m, 2]
     }
 
 
@@ -244,6 +271,7 @@ def run_creature(
     for env_name in env_names:
         t0 = time.time()
         M_list, V_list, F_list, D_list = [], [], [], []
+        centroid_list = []
 
         for ori_idx, init_dict in enumerate(inits):
             # GIF path: results/env/{env_name}/{code}/{code}_{env_name}_o{ori}.gif
@@ -260,6 +288,7 @@ def run_creature(
             V_list.append(metrics['V'])
             F_list.append(metrics['F'])
             D_list.append(metrics['D_peak'])
+            centroid_list.append(metrics['centroids'])
 
         # Aggregate across orientations
         M_t = torch.tensor(M_list)
@@ -268,6 +297,7 @@ def run_creature(
         D_t = torch.tensor(D_list)
         agg = aggregate_competency(M_t, V_t, F_t, D_t)
 
+        agg['centroids_per_ori'] = centroid_list  # list of [T_m, 2] arrays
         results['environments'][env_name] = agg
         elapsed = time.time() - t0
 
@@ -351,9 +381,17 @@ def main():
         out_dir = output_root / code
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        # Strip non-serializable centroid arrays before JSON dump
+        json_results = dict(results)
+        json_results['environments'] = {}
+        for e, env_data in results['environments'].items():
+            json_results['environments'][e] = {
+                k: v for k, v in env_data.items() if k != 'centroids_per_ori'
+            }
+
         json_path = out_dir / f"{code}_competency.json"
         with open(json_path, 'w') as f:
-            json.dump(results, f, indent=2)
+            json.dump(json_results, f, indent=2)
 
         # Also save as npz for easy numpy loading
         env_names_done = list(results['environments'].keys())
@@ -372,9 +410,27 @@ def main():
             scale=args.scale,
         )
 
+        # Save centroid traces as separate NPZ [n_envs, n_orientations, n_metric_frames, 2]
+        # Pad orientations to same length (n_metric_frames is deterministic per creature)
+        centroid_arrays = []
+        for e in env_names_done:
+            ori_traces = results['environments'][e]['centroids_per_ori']
+            centroid_arrays.append(np.stack(ori_traces, axis=0))  # [n_ori, T_m, 2]
+        centroid_matrix = np.stack(centroid_arrays, axis=0)  # [n_envs, n_ori, T_m, 2]
+
+        centroid_npz_path = out_dir / f"{code}_centroids.npz"
+        np.savez(
+            centroid_npz_path,
+            centroids=centroid_matrix,
+            env_names=env_names_done,
+            code=code,
+            scale=args.scale,
+        )
+
         if verbose:
             print(f"\n  Saved: {json_path}")
             print(f"  Saved: {npz_path}")
+            print(f"  Saved: {centroid_npz_path}  {centroid_matrix.shape}")
 
     print(f"\nOutput: {output_root}")
 

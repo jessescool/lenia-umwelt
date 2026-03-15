@@ -111,9 +111,9 @@ def draw_dot(image: np.ndarray, row: int, col: int, radius: int, color: np.ndarr
 def _apply_barrier_overlay_batch(rgb_batch: np.ndarray, barrier_np: np.ndarray) -> np.ndarray:
     """Apply barrier overlay to a (N, H, W, 3) batch in-place and return it."""
     mask = barrier_np > 0.5  # (H, W) bool
-    rgb_batch[:, mask, 0] = 255  # R
-    rgb_batch[:, mask, 1] = 50   # G
-    rgb_batch[:, mask, 2] = 255  # B
+    rgb_batch[:, mask, 0] = 200  # R
+    rgb_batch[:, mask, 1] = 200  # G
+    rgb_batch[:, mask, 2] = 200  # B
     return rgb_batch
 
 

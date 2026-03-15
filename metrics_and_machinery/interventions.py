@@ -51,7 +51,7 @@ class Intervention(ABC):
             new_state = torch.clamp(new_state, 0.0, 1.0)
         return new_state
 
-    def transient_barrier(
+    def barrier(
         self,
         shape: Tuple[int, int],
         action: Dict,
@@ -59,17 +59,21 @@ class Intervention(ABC):
         device: torch.device,
         dtype: torch.dtype,
     ) -> torch.Tensor | None:
-        """Return a one-step blind mask for transient blindness, or None.
+        """Return a blind mask for this intervention, or None.
 
-        Subclasses that combine erase + blindness (e.g. BlindEraseIntervention)
-        override this to return the same NxN binary mask used by the erase.
-        The caller slots it into lenia.step(blind_mask=...) for one tick.
+        How long the mask is applied is controlled by blind_duration at the
+        rollout level (None = persistent, 1 = step-0 only, N = steps 0..N-1).
         """
         return None
 
-    def is_barrier(self) -> bool:
-        """Return True if this intervention creates a barrier mask rather than modifying state."""
-        return False
+    @property
+    def default_blind_duration(self) -> int | None:
+        """Default blind_duration for this intervention type.
+
+        None = persistent (all steps), 1 = step-0 only, N = steps 0..N-1.
+        Base class returns None (moot since barrier() returns None).
+        """
+        return None
 
 
 class SquareEraseIntervention(Intervention):
@@ -164,7 +168,7 @@ class SquareEraseIntervention(Intervention):
 class BlindEraseIntervention(SquareEraseIntervention):
     """Erase NxN square AND produce a one-step blind mask for the same region."""
 
-    def transient_barrier(
+    def barrier(
         self,
         shape: Tuple[int, int],
         action: Dict,
@@ -173,6 +177,41 @@ class BlindEraseIntervention(SquareEraseIntervention):
         dtype: torch.dtype,
     ) -> torch.Tensor:
         """Return the same NxN binary mask as the erase kernel."""
+        return self.kernel(shape, action, device=device, dtype=dtype)
+
+    @property
+    def default_blind_duration(self) -> int | None:
+        return 1
+
+
+class SquareBlindIntervention(SquareEraseIntervention):
+    """Persistent NxN blindness: creature pixels untouched, sensory field blocked."""
+
+    def apply_batched(
+        self,
+        initial_state: torch.Tensor,
+        positions: List[Tuple[int, int]],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """No pixel erasure — clone state unchanged. Affected = mass under blind square."""
+        masks = self.masks_batched(
+            initial_state.shape, positions,
+            device=initial_state.device, dtype=initial_state.dtype,
+        )
+        B = len(positions)
+        states = initial_state.unsqueeze(0).expand(B, -1, -1).clone()
+        # Affected mass = creature mass hidden under the blind square
+        affected = (masks * initial_state.unsqueeze(0)).sum(dim=(1, 2))
+        return states, affected
+
+    def barrier(
+        self,
+        shape: Tuple[int, int],
+        action: Dict,
+        *,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> torch.Tensor:
+        """Return the NxN binary mask as a blind region."""
         return self.kernel(shape, action, device=device, dtype=dtype)
 
 
@@ -219,52 +258,6 @@ class SquareAdditiveIntervention(Intervention):
         ]
 
 
-class BarrierIntervention(Intervention):
-    """Persistent barrier cells that are invisible to convolution kernels."""
-
-    def __init__(self, size: int = 5) -> None:
-        self.size = size
-
-    def kernel(
-        self,
-        shape: Tuple[int, int],
-        action: Dict,
-        *,
-        device: torch.device,
-        dtype: torch.dtype,
-    ) -> torch.Tensor:
-        """Binary NxN barrier mask centered at (x, y), toroidal wrap."""
-        H, W = shape
-        x = int(action['x']) % W
-        y = int(action['y']) % H
-
-        mask = torch.zeros((H, W), device=device, dtype=dtype)
-        half = self.size // 2
-        offsets = torch.arange(-half, self.size - half, device=device)
-        rows = (y + offsets) % H
-        cols = (x + offsets) % W
-        mask[rows[:, None], cols[None, :]] = 1.0
-        return mask
-
-    def apply(self, state: torch.Tensor, action: Dict, *, clamp: bool = True) -> torch.Tensor:
-        """Return barrier mask for caller to add to simulation."""
-        return self.kernel(
-            state.shape[-2:],
-            action,
-            device=state.device,
-            dtype=state.dtype,
-        )
-
-    def action_space(self) -> List[ActionParam]:
-        return [
-            ActionParam("x", "discrete", 0, "Column coordinate"),
-            ActionParam("y", "discrete", 0, "Row coordinate"),
-        ]
-
-    def is_barrier(self) -> bool:
-        """Barrier interventions return masks, not modified state."""
-        return True
-
 
 def make_intervention(intervention_type: str, size: int, *, intensity: float = 0.3) -> Intervention:
     """Create an intervention by type name."""
@@ -274,7 +267,7 @@ def make_intervention(intervention_type: str, size: int, *, intensity: float = 0
         return BlindEraseIntervention(size=size)
     elif intervention_type == "additive":
         return SquareAdditiveIntervention(size=size, intensity=intensity)
-    elif intervention_type == "barrier":
-        return BarrierIntervention(size=size)
+    elif intervention_type == "blind":
+        return SquareBlindIntervention(size=size)
     else:
-        raise ValueError(f"Unknown intervention type: {intervention_type}. Valid: erase, blind_erase, additive, barrier")
+        raise ValueError(f"Unknown intervention type: {intervention_type}. Valid: erase, blind_erase, additive, blind")

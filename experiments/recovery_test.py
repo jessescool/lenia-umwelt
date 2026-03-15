@@ -33,7 +33,7 @@ from substrate.lenia import Automaton, _auto_device
 from utils.core import rotate_tensor
 from utils.batched import (
     apply_interventions_batched,
-    build_transient_blind_masks,
+    build_blind_masks,
     estimate_batch_size,
     rollout_batched_with_ctrl,
 )
@@ -165,31 +165,32 @@ def run_recovery_test(
             test_states_active = test_states[active_idx]
             active_positions = [batch_positions[i] for i in active_idx.cpu().tolist()]
 
-            # Build transient blind masks for blind_erase (None for plain erase/additive)
-            transient_masks = build_transient_blind_masks(
+            # Build blind masks (None for plain erase/additive)
+            blind = build_blind_masks(
                 intervention, (H, W), active_positions,
                 device=device, dtype=initial_state.dtype,
             )
+            blind_dur = intervention.default_blind_duration
 
             # Rollout
             try:
                 test_frames, ctrl_frames = rollout_batched_with_ctrl(
                     test_states_active, initial_state, automaton, window,
-                    transient_blind_masks=transient_masks,
+                    blind_masks=blind,
+                    blind_duration=blind_dur,
                 )
             except (torch.cuda.OutOfMemoryError if hasattr(torch.cuda, 'OutOfMemoryError') else RuntimeError):
                 torch.cuda.empty_cache()
                 mid = test_states_active.shape[0] // 2
-                # Split transient masks to match the half-batches
-                tm1 = transient_masks[:mid] if transient_masks is not None else None
-                tm2 = transient_masks[mid:] if transient_masks is not None else None
+                b1 = blind[:mid] if blind is not None else None
+                b2 = blind[mid:] if blind is not None else None
                 tf1, cf1 = rollout_batched_with_ctrl(
                     test_states_active[:mid], initial_state, automaton, window,
-                    transient_blind_masks=tm1,
+                    blind_masks=b1, blind_duration=blind_dur,
                 )
                 tf2, cf2 = rollout_batched_with_ctrl(
                     test_states_active[mid:], initial_state, automaton, window,
-                    transient_blind_masks=tm2,
+                    blind_masks=b2, blind_duration=blind_dur,
                 )
                 test_frames = torch.cat([tf1, tf2], dim=0)
                 ctrl_frames = cf1

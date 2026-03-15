@@ -388,20 +388,20 @@ def make_noise(
 
 ENVIRONMENTS = {
     # Row 1: scattered obstacles
+    "pegs": lambda s, d, t, scale_factor=1.0: make_pegs(s, d, t, seed=19, scale_factor=scale_factor),
     "chips": make_chips,
     "shuriken": make_shuriken,
-    "pegs": lambda s, d, t, scale_factor=1.0: make_pegs(s, d, t, seed=19, scale_factor=scale_factor),
     # Row 2: disruption / membranes
     "guidelines": make_guidelines,
     "membrane-1px": lambda s, d, t, scale_factor=1.0: make_membrane_wall(s, d, t, thickness=1, scale_factor=scale_factor),
     "membrane-3px": lambda s, d, t, scale_factor=1.0: make_membrane_wall(s, d, t, thickness=3, scale_factor=scale_factor),
     # Row 3: enclosures
+    "box": make_box,
     "capsule": make_containment_capsule,
     "ring": make_capsule,
-    "box": make_box,
     # Row 4: channels / noise
-    "funnel": make_funnel,
     "corridor": make_corridor,
+    "funnel": make_funnel,
     "noise": lambda s, d, t, scale_factor=1.0: make_noise(s, d, t, density=0.30, seed=271, scale_factor=scale_factor),
 }
 
@@ -422,87 +422,16 @@ def make_env(
     return ENVIRONMENTS[name](shape, device, dtype, scale_factor=sf)
 
 
-def generate_all_masks(
-    shape: Tuple[int, int] = (128, 256),
-    device: torch.device = None,
+def load_env(
+    name: str,
+    device: torch.device,
     dtype: torch.dtype = torch.float32,
-    output_dir: Path = None,
-    scaled: bool = False,
-) -> dict[str, torch.Tensor]:
-    """Generate all environment masks and optionally save to disk."""
-    if device is None:
-        device = torch.device("cpu")
-
-    masks = {}
-    for name in ENVIRONMENTS:
-        masks[name] = make_env(name, shape, device, dtype, scaled=scaled)
-
-    if output_dir is not None:
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for name, mask in masks.items():
-            torch.save(mask.cpu(), output_dir / f"{name}.pt")
-            print(f"Saved {name}.pt")
-
-    return masks
-
-
-def visualize_masks(masks: dict[str, torch.Tensor], save_path: Path = None):
-    """Create a multi-column visualization grid of all masks."""
-    import matplotlib.pyplot as plt
-
-    n = len(masks)
-    ncols = 3
-    nrows = math.ceil(n / ncols)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 2.5 * nrows))
-    axes = axes.flatten()
-
-    for i, (name, mask) in enumerate(masks.items()):
-        axes[i].imshow(1.0 - mask.cpu().numpy(), cmap='gray', vmin=0, vmax=1)
-        axes[i].set_title(name, fontsize=10, fontweight='bold')
-        axes[i].set_aspect('equal')
-        axes[i].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
-
-    for j in range(i + 1, len(axes)):
-        axes[j].set_visible(False)
-
-    plt.tight_layout()
-
-    if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved visualization to {save_path}")
-
-    plt.close()
-
-
-def save_individual_pngs(masks: dict[str, torch.Tensor], output_dir: Path):
-    """Save each mask as an individual PNG."""
-    import matplotlib.pyplot as plt
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    for name, mask in masks.items():
-        fig, ax = plt.subplots(figsize=(6, 2.5))
-        ax.imshow(1.0 - mask.cpu().numpy(), cmap='gray', vmin=0, vmax=1)
-        ax.set_title(name, fontsize=10, fontweight='bold')
-        ax.set_aspect('equal')
-        ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
-        fig.tight_layout()
-        fig.savefig(output_dir / f"{name}.png", dpi=150, bbox_inches='tight')
-        plt.close(fig)
-        print(f"Saved {name}.png")
-
-
-if __name__ == "__main__":
-    env_dir = Path(__file__).parent
-
-    print(f"Generating {len(ENVIRONMENTS)} barrier environment masks (128x256)...")
-    masks = generate_all_masks(
-        shape=(128, 256),
-        output_dir=env_dir,
-    )
-
-    save_individual_pngs(masks, env_dir / "previews")
-    visualize_masks(masks, save_path=env_dir / "overview.png")
-    print(f"\nDone! {len(masks)} environments saved to: {env_dir.resolve()}")
+    env_dir: str = "environments/",
+) -> torch.Tensor:
+    """Load precomputed environment mask from .pt file."""
+    path = Path(env_dir) / f"{name}.pt"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Env mask not found: {path}. Run: python environments/make_envs.py"
+        )
+    return torch.load(path, weights_only=False).to(device=device, dtype=dtype)

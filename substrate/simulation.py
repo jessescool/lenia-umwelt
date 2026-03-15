@@ -13,7 +13,7 @@ from utils.analysis import Rollout
 
 
 class Simulation:
-    def __init__(self, cfg: Config | None = None, *, fft: bool = False):
+    def __init__(self, cfg: Config | None = None, *, fft: bool = True):
         self.cfg = cfg or Config()
         self.lenia = Lenia.from_config(self.cfg, fft=fft)
         self.board = self.lenia.board
