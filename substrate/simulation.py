@@ -19,6 +19,7 @@ class Simulation:
         self.board = self.lenia.board
         self.automaton = self.lenia.automaton
         self.barrier_mask: torch.Tensor | None = None
+        self.salience_map: torch.Tensor | None = None
 
     def add_animal(
         self,
@@ -66,6 +67,14 @@ class Simulation:
         """Remove all barriers."""
         self.barrier_mask = None
 
+    def set_salience(self, salience: torch.Tensor) -> None:
+        """Set the salience map (replaces any existing salience)."""
+        self.salience_map = salience.to(self.board.tensor.device, self.board.tensor.dtype)
+
+    def clear_salience(self) -> None:
+        """Remove the salience map."""
+        self.salience_map = None
+
     def run(
         self,
         steps: int,
@@ -74,7 +83,7 @@ class Simulation:
     ) -> Rollout | None:
         frames: list[torch.Tensor] | None = [] if callback is None else None
         for _ in range(steps):
-            state = self.lenia.step(blind_mask=self.barrier_mask)
+            state = self.lenia.step(blind_mask=self.barrier_mask, salience_map=self.salience_map)
             if callback is not None:
                 callback(state, self.lenia.tick)
             else:
@@ -112,4 +121,6 @@ class Simulation:
         copy.board.tensor.copy_(self.board.tensor)
         if self.barrier_mask is not None:
             copy.barrier_mask = self.barrier_mask.clone()
+        if self.salience_map is not None:
+            copy.salience_map = self.salience_map.clone()
         return copy

@@ -27,13 +27,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-# Canonical display order
-ENV_ORDER = [
-    "pegs", "chips", "shuriken",
-    "guidelines", "membrane-1px", "membrane-3px",
-    "box", "capsule", "ring",
-    "corridor", "funnel", "noise",
-]
+from config import ENV_ORDER
 
 
 def load_all(input_dir: Path) -> dict:
@@ -191,6 +185,267 @@ def make_radar_comparison(data, envs, codes, save_path):
     print(f"  {save_path.name}")
 
 
+def make_range_plot(data, envs, codes, save_path):
+    """Small-multiples range plot: dot at median, whisker from min to max.
+
+    One panel per creature, shared x-axis (0-100% survival),
+    environments on y-axis sorted by overall median difficulty.
+    """
+    n_creatures = len(codes)
+    n_envs = len(envs)
+
+    # build median/p25/p75/min/max matrices
+    med = np.full((n_creatures, n_envs), np.nan)
+    p25 = np.full((n_creatures, n_envs), np.nan)
+    p75 = np.full((n_creatures, n_envs), np.nan)
+    lo = np.full((n_creatures, n_envs), np.nan)
+    hi = np.full((n_creatures, n_envs), np.nan)
+    for i, code in enumerate(codes):
+        d = data[code]
+        if 'last_return' not in d:
+            continue
+        ts = d['total_steps']
+        for j, env in enumerate(envs):
+            if env in d['env_names']:
+                idx = d['env_names'].index(env)
+                lr_pct = d['last_return'][idx].astype(float) / ts * 100
+                med[i, j] = np.median(lr_pct)
+                p25[i, j] = np.percentile(lr_pct, 25)
+                p75[i, j] = np.percentile(lr_pct, 75)
+                lo[i, j] = lr_pct.min()
+                hi[i, j] = lr_pct.max()
+
+    # fixed display order for environments
+    ENV_DISPLAY_ORDER = [
+        'pegs', 'chips', 'shuriken', 'guidelines',
+        'membrane-1px', 'membrane-3px',
+        'box', 'capsule', 'ring', 'corridor', 'funnel', 'noise',
+    ]
+    col_order = [envs.index(e) for e in ENV_DISPLAY_ORDER if e in envs]
+    # append any envs not in display order
+    col_order += [i for i in range(n_envs) if i not in col_order]
+    envs_sorted = [envs[k] for k in col_order]
+    med = med[:, col_order]
+    p25 = p25[:, col_order]
+    p75 = p75[:, col_order]
+    lo = lo[:, col_order]
+    hi = hi[:, col_order]
+
+    # single narrow panel, grouped: tight within env, clear gap between envs
+    intra = 0.09  # spacing between creatures within an environment
+    inter = 0.22  # extra gap between environment groups
+    row_pitch = (n_creatures - 1) * intra + inter
+
+    # fixed display order and colors
+    DISPLAY_ORDER = ['O2u', 'S1s', 'K4s', 'K6s']
+    _tab10 = plt.cm.tab10
+    COLOR_MAP = {'O2u': _tab10(3), 'S1s': _tab10(1), 'K4s': _tab10(0), 'K6s': _tab10(2)}
+    # reorder codes to match display order, keeping any extras at end
+    ordered = [c for c in DISPLAY_ORDER if c in codes]
+    ordered += [c for c in codes if c not in ordered]
+    # reorder matrices to match
+    order_idx = [codes.index(c) for c in ordered]
+    med = med[order_idx]
+    p25 = p25[order_idx]
+    p75 = p75[order_idx]
+    lo = lo[order_idx]
+    hi = hi[order_idx]
+    codes = ordered
+
+    fig, ax = plt.subplots(figsize=(4.0, row_pitch * n_envs + 0.8))
+
+    for k, code in enumerate(codes):
+        color = COLOR_MAP.get(code, '#333333')
+        for j in range(n_envs):
+            m_val = med[k, j]
+            if np.isnan(m_val):
+                continue
+            l, q1, q3, h = lo[k, j], p25[k, j], p75[k, j], hi[k, j]
+            y = j * row_pitch + k * intra
+            # thin whisker from min to max
+            ax.plot([l, h], [y, y], color=color, linewidth=0.8, alpha=0.35)
+            # thick bar for IQR (25th–75th)
+            ax.plot([q1, q3], [y, y], color=color, linewidth=3,
+                    solid_capstyle='round', alpha=0.7)
+            # hollow dots at min and max
+            ax.plot(l, y, 'o', markerfacecolor='white', markeredgecolor=color,
+                    markersize=4, markeredgewidth=1.1, zorder=4)
+            ax.plot(h, y, 'o', markerfacecolor='white', markeredgecolor=color,
+                    markersize=4, markeredgewidth=1.1, zorder=4)
+            # solid dot at median
+            ax.plot(m_val, y, 'o', color=color, markersize=4, zorder=5)
+
+    ax.set_xlim(-5, 105)
+    # separator sits inter/2 from the nearest bar; match that for top/bottom padding
+    pad = inter / 2
+    first_bar_y = 0
+    last_bar_y = (n_envs - 1) * row_pitch + (n_creatures - 1) * intra
+    ax.set_ylim(last_bar_y + pad, first_bar_y - pad)
+    # label at the center of each environment group
+    env_centers = [j * row_pitch + (n_creatures - 1) * intra / 2 for j in range(n_envs)]
+    ax.set_yticks(env_centers)
+    ax.set_yticklabels(envs_sorted, fontsize=10)
+    ax.set_xticks([0, 25, 50, 75, 100])
+    ax.set_xlabel('% duration of simulation survived', fontsize=10)
+    ax.grid(axis='x', alpha=0.15)
+    # separators between environment groups (midpoint between last bar of prev and first bar of next)
+    for j in range(1, n_envs):
+        prev_bottom = (j - 1) * row_pitch + (n_creatures - 1) * intra
+        next_top = j * row_pitch
+        sep_y = (prev_bottom + next_top) / 2
+        ax.axhline(sep_y, color='black', linewidth=0.4,
+                   linestyle='--', alpha=1.0)
+    ax.yaxis.tick_right()
+    ax.tick_params(left=False, right=False, labelsize=9)
+
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  {save_path.name}")
+
+
+def make_competency_heatmap_with_marginals(data, envs, codes, save_path):
+    """Publication heatmap: creatures × environments with marginal summaries.
+
+    - Main panel: median last_return as % of run, colored by magma
+    - Right marginal: row medians (overall creature competency)
+    - Bottom marginal: column medians (overall env difficulty)
+    - Hatching on high-IQR cells (orientation-sensitive)
+    - Rows sorted by median competency, cols sorted by median difficulty
+    """
+    from matplotlib.patches import Rectangle
+    import scipy.cluster.hierarchy as sch
+
+    n_creatures = len(codes)
+    n_envs = len(envs)
+
+    # build median and IQR matrices
+    med_matrix = np.full((n_creatures, n_envs), np.nan)
+    iqr_matrix = np.full((n_creatures, n_envs), np.nan)
+    for i, code in enumerate(codes):
+        d = data[code]
+        if 'last_return' not in d:
+            continue
+        ts = d['total_steps']
+        for j, env in enumerate(envs):
+            if env in d['env_names']:
+                idx = d['env_names'].index(env)
+                lr_pct = d['last_return'][idx].astype(float) / ts * 100
+                med_matrix[i, j] = np.median(lr_pct)
+                iqr_matrix[i, j] = np.percentile(lr_pct, 75) - np.percentile(lr_pct, 25)
+
+    # sort cols by median difficulty (easiest=highest median on left)
+    col_med = np.nanmedian(med_matrix, axis=0)
+    col_order = np.argsort(-col_med)  # descending = easiest first
+    med_matrix = med_matrix[:, col_order]
+    iqr_matrix = iqr_matrix[:, col_order]
+    envs_sorted = [envs[k] for k in col_order]
+
+    # sort rows by median competency (highest on top)
+    row_med = np.nanmedian(med_matrix, axis=1)
+    row_order = np.argsort(-row_med)
+    med_matrix = med_matrix[row_order]
+    iqr_matrix = iqr_matrix[row_order]
+    codes_sorted = [codes[k] for k in row_order]
+    row_med = row_med[row_order]
+
+    # recalculate marginals after sorting
+    col_med_sorted = np.nanmedian(med_matrix, axis=0)
+    row_med_sorted = np.nanmedian(med_matrix, axis=1)
+
+    # IQR threshold for hatching (top quartile of IQR values)
+    iqr_thresh = np.nanpercentile(iqr_matrix, 75)
+
+    # ── layout: main heatmap + right marginal + bottom marginal ──
+    fig = plt.figure(figsize=(10, 4.5))
+    # gridspec: main | right-margin | colorbar, bottom-margin below main
+    gs = fig.add_gridspec(2, 3, width_ratios=[n_envs, 1.5, 0.4],
+                          height_ratios=[n_creatures, 1.2],
+                          hspace=0.08, wspace=0.08)
+
+    ax_main = fig.add_subplot(gs[0, 0])
+    ax_right = fig.add_subplot(gs[0, 1])
+    ax_bot = fig.add_subplot(gs[1, 0])
+    ax_cb = fig.add_subplot(gs[0, 2])
+    # hide bottom-right corner
+    ax_empty = fig.add_subplot(gs[1, 1])
+    ax_empty.axis('off')
+    ax_empty2 = fig.add_subplot(gs[1, 2])
+    ax_empty2.axis('off')
+
+    cmap = plt.cm.magma
+    vmin, vmax = 0, 100
+
+    # ── main heatmap ──
+    im = ax_main.imshow(med_matrix, cmap=cmap, vmin=vmin, vmax=vmax,
+                         aspect='auto', interpolation='nearest')
+
+    # cell annotations + hatching for high IQR
+    for i in range(len(codes_sorted)):
+        for j in range(len(envs_sorted)):
+            val = med_matrix[i, j]
+            if np.isnan(val):
+                continue
+            frac = (val - vmin) / (vmax - vmin)
+            color = 'white' if frac < 0.5 else 'black'
+            ax_main.text(j, i, f'{val:.0f}', ha='center', va='center',
+                         fontsize=8, color=color, fontweight='bold')
+            # hatch high-IQR cells
+            if iqr_matrix[i, j] >= iqr_thresh:
+                rect = Rectangle((j - 0.5, i - 0.5), 1, 1,
+                                 fill=False, edgecolor='white',
+                                 linewidth=1.2, linestyle='--', alpha=0.7)
+                ax_main.add_patch(rect)
+
+    ax_main.set_xticks(range(len(envs_sorted)))
+    ax_main.set_xticklabels([])  # labels go on bottom marginal
+    ax_main.set_yticks(range(len(codes_sorted)))
+    ax_main.set_yticklabels(codes_sorted, fontsize=11, fontweight='bold')
+    ax_main.tick_params(length=0)
+
+    # ── right marginal: horizontal bars for row medians ──
+    y_pos = np.arange(len(codes_sorted))
+    bars = ax_right.barh(y_pos, row_med_sorted, color=[cmap(v / 100) for v in row_med_sorted],
+                         edgecolor='black', linewidth=0.5, height=0.7)
+    for i, v in enumerate(row_med_sorted):
+        ax_right.text(v + 1.5, i, f'{v:.0f}%', va='center', fontsize=9, fontweight='bold')
+    ax_right.set_xlim(0, 110)
+    ax_right.set_ylim(len(codes_sorted) - 0.5, -0.5)
+    ax_right.set_yticks([])
+    ax_right.set_xlabel('median %', fontsize=9)
+    ax_right.spines['top'].set_visible(False)
+    ax_right.spines['right'].set_visible(False)
+    ax_right.tick_params(labelsize=8)
+
+    # ── bottom marginal: vertical bars for column medians ──
+    x_pos = np.arange(len(envs_sorted))
+    bars_b = ax_bot.bar(x_pos, col_med_sorted,
+                        color=[cmap(v / 100) for v in col_med_sorted],
+                        edgecolor='black', linewidth=0.5, width=0.7)
+    for j, v in enumerate(col_med_sorted):
+        ax_bot.text(j, v + 1.5, f'{v:.0f}', ha='center', fontsize=7, fontweight='bold')
+    ax_bot.set_ylim(0, 110)
+    ax_bot.set_xlim(-0.5, len(envs_sorted) - 0.5)
+    ax_bot.set_xticks(range(len(envs_sorted)))
+    ax_bot.set_xticklabels(envs_sorted, rotation=45, ha='right', fontsize=9)
+    ax_bot.set_ylabel('median %', fontsize=9)
+    ax_bot.spines['top'].set_visible(False)
+    ax_bot.spines['right'].set_visible(False)
+    ax_bot.tick_params(labelsize=8)
+
+    # ── colorbar ──
+    cb = fig.colorbar(im, cax=ax_cb)
+    cb.set_label('last return to orbit (% of run)', fontsize=9)
+
+    # ── title ──
+    fig.suptitle('Competency by creature × environment',
+                 fontsize=13, fontweight='bold', y=1.02)
+
+    fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  {save_path.name}")
+
+
 def save_csv(data, envs, codes, save_path):
     """Save summary CSV."""
     has_lr = any('last_return' in d for d in data.values())
@@ -227,6 +482,7 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze environment competency results")
     parser.add_argument("--input", default="results/env_competency", help="Input directory")
     parser.add_argument("--output", default="results/env_competency", help="Output directory")
+    parser.add_argument("--codes", nargs="+", default=None, help="Creature codes to include")
     args = parser.parse_args()
 
     input_dir = Path(args.input)
@@ -238,6 +494,8 @@ def main():
         print(f"No competency data found in {input_dir}")
         return
 
+    if args.codes:
+        data = {k: v for k, v in data.items() if k in args.codes}
     codes = sorted(data.keys())
     all_envs = set()
     for d in data.values():
@@ -288,7 +546,21 @@ def main():
                      vmax=max(1, np.nanmax(lr_std_pct)), fmt='.0f', pct=True)
         print()
 
-    # ── radar comparison ──
+    # ── range plot (primary overview) ──
+    if has_lr:
+        print("Range plot:")
+        make_range_plot(data, envs, codes,
+                        output_dir / 'survival_by_environment.png')
+        print()
+
+    # ── heatmap with marginals ──
+    if has_lr:
+        print("Competency heatmap with marginals:")
+        make_competency_heatmap_with_marginals(data, envs, codes,
+                              output_dir / 'competency_heatmap_marginals.png')
+        print()
+
+    # ── radar comparison (legacy) ──
     if has_lr:
         print("Radar comparison:")
         make_radar_comparison(data, envs, codes,

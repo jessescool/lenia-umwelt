@@ -188,10 +188,13 @@ class Automaton:
         # rfft2 multiplication gives circular convolution (no padding needed).
         H, W = cfg.grid_shape
         K = weight.shape[-1]
+        if K > min(H, W):
+            raise ValueError(f"Kernel size {K} exceeds grid {H}x{W}")
         kernel_2d = weight[0, 0]                     # [K, K]
         padded_k = torch.zeros(H, W, dtype=cfg.dtype, device=cfg.device)
         padded_k[:K, :K] = kernel_2d
-        # Roll so kernel center lands at (0, 0)
+        # Roll so kernel center lands at (0, 0).
+        # K = 2R+1 is always odd, so center = K//2 is exact (no half-pixel shift).
         center = K // 2
         padded_k = torch.roll(padded_k, shifts=(-center, -center), dims=(0, 1))
         self._kernel_fft = rfft2(padded_k)           # [H, W//2+1] complex
@@ -233,7 +236,9 @@ class Automaton:
 
     @torch.no_grad()
     def decompose(
-        self, board: Board, *, blind_mask: torch.Tensor | None = None,
+        self, board: Board, *,
+        blind_mask: torch.Tensor | None = None,
+        salience_map: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return (excitation, growth, update) without modifying board state.
 
@@ -242,20 +247,27 @@ class Automaton:
           growth     = growth_fn(excitation) — the cell's response (+grow / -decay)
           update     = dt * growth           — actual state change per tick
 
-        When blind_mask is provided, uses renormalized convolution (Eq. 2)
-        so excitation reflects what the creature senses under blindness.
+        When salience_map is provided, uses renormalized convolution with W
+        directly (Eq. 3).  When blind_mask is provided, uses renormalized
+        convolution with V = 1 - M (Eq. 2).  salience_map takes precedence.
         """
         current = board.tensor
-        H, W = current.shape
-        if blind_mask is not None:
-            kfft = self._rebuild_kernel_fft(H, W)
+        H, W_dim = current.shape
+        if salience_map is not None:
+            # Generalized salience field (Eq. 3): W >= 0, no inversion
+            kfft = self._rebuild_kernel_fft(H, W_dim)
+            num = irfft2(rfft2(current * salience_map) * kfft, s=(H, W_dim))
+            den = irfft2(rfft2(salience_map) * kfft, s=(H, W_dim))
+            excitation = num / den.clamp(min=1e-6)
+        elif blind_mask is not None:
+            kfft = self._rebuild_kernel_fft(H, W_dim)
             visible = 1 - blind_mask
             exc_fft = rfft2(current * visible) * kfft
             vis_fft = rfft2(visible) * kfft
-            excitation = irfft2(exc_fft, s=(H, W)) / irfft2(vis_fft, s=(H, W)).clamp(min=1e-6)
+            excitation = irfft2(exc_fft, s=(H, W_dim)) / irfft2(vis_fft, s=(H, W_dim)).clamp(min=1e-6)
         elif self.use_fft:
-            kfft = self._rebuild_kernel_fft(H, W)
-            excitation = irfft2(rfft2(current) * kfft, s=(H, W))
+            kfft = self._rebuild_kernel_fft(H, W_dim)
+            excitation = irfft2(rfft2(current) * kfft, s=(H, W_dim))
         else:
             excitation = self._excitation_spatial(current)
         growth = _growth(excitation, self._mu_t, self._sigma_safe, self.cfg.growth_type)
@@ -263,32 +275,43 @@ class Automaton:
         return excitation, growth, update
 
     @torch.no_grad()
-    def step(self, board: Board, *, blind_mask: torch.Tensor | None = None) -> None:
+    def step(
+        self, board: Board, *,
+        blind_mask: torch.Tensor | None = None,
+        salience_map: torch.Tensor | None = None,
+    ) -> None:
         """Step the automaton forward one tick.
 
         Default: spatial F.conv2d (canonical Lenia).
         Opt-in: FFT convolution via rfft2 multiply (use_fft=True).
 
-        When blind_mask is provided, always uses FFT path for renormalized
-        convolution (Eq. 2 from "Blindness in Lenia").
+        salience_map takes precedence over blind_mask.  When salience_map is
+        provided, uses renormalized convolution with W directly (Eq. 3).
+        When blind_mask is provided, uses V = 1 - M (Eq. 2).
         """
         cfg = self.cfg
         current = board.tensor
-        H, W = current.shape
+        H, W_dim = current.shape
 
-        if blind_mask is not None:
+        if salience_map is not None:
+            # Generalized salience field (Eq. 3): W >= 0, no inversion
+            kfft = self._rebuild_kernel_fft(H, W_dim)
+            num = irfft2(rfft2(current * salience_map) * kfft, s=(H, W_dim))
+            den = irfft2(rfft2(salience_map) * kfft, s=(H, W_dim))
+            excitation = num / den.clamp(min=1e-6)
+        elif blind_mask is not None:
             # Renormalized convolution always uses FFT (two convolutions needed)
-            kfft = self._rebuild_kernel_fft(H, W)
+            kfft = self._rebuild_kernel_fft(H, W_dim)
             visible = 1 - blind_mask
             masked_current = current * visible
             exc_fft = rfft2(masked_current) * kfft
             vis_fft = rfft2(visible) * kfft
-            excitation = irfft2(exc_fft, s=(H, W))
-            vis_weight = irfft2(vis_fft, s=(H, W))
+            excitation = irfft2(exc_fft, s=(H, W_dim))
+            vis_weight = irfft2(vis_fft, s=(H, W_dim))
             excitation = excitation / vis_weight.clamp(min=1e-6)
         elif self.use_fft:
-            kfft = self._rebuild_kernel_fft(H, W)
-            excitation = irfft2(rfft2(current) * kfft, s=(H, W))
+            kfft = self._rebuild_kernel_fft(H, W_dim)
+            excitation = irfft2(rfft2(current) * kfft, s=(H, W_dim))
         else:
             excitation = self._excitation_spatial(current)
 
@@ -306,6 +329,8 @@ class Automaton:
         *,
         blind_masks: torch.Tensor | None = None,
         vis_weight: torch.Tensor | None = None,
+        salience_maps: torch.Tensor | None = None,
+        sal_weight: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Step B simulations forward in parallel.
 
@@ -315,31 +340,44 @@ class Automaton:
         vis_weight: pre-computed renormalization denominator for persistent
         blind masks.  When provided the two FFTs for the visibility field
         are skipped, saving ~2× [B,H,W] peak memory per step.
+
+        salience_maps: generalized salience field W >= 0 (Eq. 3).  Takes
+        precedence over blind_masks.  sal_weight is the pre-computed
+        denominator (analogous to vis_weight).
         """
         cfg = self.cfg
-        H, W = states.shape[1], states.shape[2]
+        H, W_dim = states.shape[1], states.shape[2]
 
-        if blind_masks is not None:
+        if salience_maps is not None:
+            # Generalized salience field (Eq. 3)
+            kfft = self._rebuild_kernel_fft(H, W_dim)
+            if salience_maps.dim() == 2:
+                salience_maps = salience_maps.unsqueeze(0).expand_as(states)
+            num = irfft2(rfft2(states * salience_maps) * kfft, s=(H, W_dim))
+            if sal_weight is None:
+                sal_weight = irfft2(rfft2(salience_maps) * kfft, s=(H, W_dim))
+            excitation = num / sal_weight.clamp(min=1e-6)
+        elif blind_masks is not None:
             # Renormalized convolution always uses FFT
-            kfft = self._rebuild_kernel_fft(H, W)
+            kfft = self._rebuild_kernel_fft(H, W_dim)
             if blind_masks.dim() == 2:
                 blind_masks = blind_masks.unsqueeze(0).expand_as(states)
             masked = states * (1 - blind_masks)
             exc_fft = rfft2(masked) * kfft          # broadcasts [B,H,W//2+1]
             del masked
-            excitation = irfft2(exc_fft, s=(H, W))
+            excitation = irfft2(exc_fft, s=(H, W_dim))
             del exc_fft
             if vis_weight is None:
                 # Fallback: compute on the fly (mixed transient+persistent masks)
                 visible = 1 - blind_masks
                 vis_fft = rfft2(visible) * kfft
                 del visible
-                vis_weight = irfft2(vis_fft, s=(H, W))
+                vis_weight = irfft2(vis_fft, s=(H, W_dim))
                 del vis_fft
             excitation = excitation / vis_weight.clamp(min=1e-6)
         elif self.use_fft:
-            kfft = self._rebuild_kernel_fft(H, W)
-            excitation = irfft2(rfft2(states) * kfft, s=(H, W))  # [B, H, W]
+            kfft = self._rebuild_kernel_fft(H, W_dim)
+            excitation = irfft2(rfft2(states) * kfft, s=(H, W_dim))  # [B, H, W]
         else:
             excitation = self._excitation_spatial_batched(states)
 
@@ -361,9 +399,13 @@ class Lenia:
         automaton = Automaton(cfg, fft=fft)
         return cls(board, automaton)
 
-    def step(self, *, blind_mask: torch.Tensor | None = None) -> torch.Tensor:
-        """Step the simulation forward, optionally with blindness filter."""
-        self.automaton.step(self.board, blind_mask=blind_mask)
+    def step(
+        self, *,
+        blind_mask: torch.Tensor | None = None,
+        salience_map: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Step the simulation forward, optionally with blindness or salience."""
+        self.automaton.step(self.board, blind_mask=blind_mask, salience_map=salience_map)
         self.tick += 1
         return self.board.tensor
 
@@ -487,5 +529,8 @@ def _kernel_to_conv_weight(kernel: torch.Tensor | Sequence[Sequence[float]], cfg
         tensor = tensor.unsqueeze(0)
     if tensor.dim() != 4:
         raise ValueError("Kernel tensor must be 2D or 4D")
-    tensor = tensor / tensor.sum()
+    total = tensor.sum()
+    if total.abs() < 1e-10:
+        raise ValueError("Kernel sums to zero — cannot normalize")
+    tensor = tensor / total
     return tensor.contiguous()

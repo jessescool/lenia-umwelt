@@ -296,6 +296,7 @@ def run_one(
         'competency_threshold': competency_threshold,
         'centroids': centroids[:metric_idx].cpu().numpy(),  # [T_m, 2]
         'mass': mass_ts.squeeze(0).cpu().numpy(),  # [T_m]
+        'distances': distances[:metric_idx].cpu().numpy(),  # [T_m] W1 from c_bar
         'occlusion_weighted': occ_weighted_ts[:metric_idx].cpu().numpy(),  # [T_m]
         'occlusion_uniform': occ_uniform_ts[:metric_idx].cpu().numpy(),  # [T_m]
         'occlusion_max': occ_max_ts[:metric_idx].cpu().numpy(),  # [T_m]
@@ -517,6 +518,7 @@ def run_batch(
             'competency_threshold': competency_threshold,
             'centroids': centroids_all[b, :metric_idx].cpu().numpy(),
             'mass': m_trim[b].cpu().numpy(),
+            'distances': d_trim[b].cpu().numpy(),
             'occlusion_weighted': occ_w_all[b, :metric_idx].cpu().numpy(),
             'occlusion_uniform': occ_u_all[b, :metric_idx].cpu().numpy(),
             'occlusion_max': occ_m_all[b, :metric_idx].cpu().numpy(),
@@ -656,6 +658,7 @@ def main():
         D_list = [met['D_peak'] for met in all_metrics]
         lr_list = [met['last_return'] for met in all_metrics]
         centroid_list = [met['centroids'] for met in all_metrics]
+        distance_list = [met['distances'] for met in all_metrics]
         occ_weighted_list = [met['occlusion_weighted'] for met in all_metrics]
         occ_uniform_list = [met['occlusion_uniform'] for met in all_metrics]
         occ_max_list = [met['occlusion_max'] for met in all_metrics]
@@ -670,6 +673,7 @@ def main():
         agg['last_return_mean'] = float(lr_arr.mean())
         agg['last_return_std'] = float(lr_arr.std())
         agg['centroids_per_ori'] = centroid_list  # list of [T_m, 2] arrays
+        agg['distances_per_ori'] = distance_list  # list of [T_m] arrays — W1 from c_bar
         agg['occ_weighted_per_ori'] = occ_weighted_list   # list of [T_m] arrays
         agg['occ_uniform_per_ori'] = occ_uniform_list
         agg['occ_max_per_ori'] = occ_max_list
@@ -689,7 +693,7 @@ def main():
     for e, env_data in results['environments'].items():
         json_results['environments'][e] = {
             k: v for k, v in env_data.items()
-            if k not in ('centroids_per_ori', 'occ_weighted_per_ori', 'occ_uniform_per_ori', 'occ_max_per_ori', 'mass_per_ori')
+            if k not in ('centroids_per_ori', 'distances_per_ori', 'occ_weighted_per_ori', 'occ_uniform_per_ori', 'occ_max_per_ori', 'mass_per_ori')
         }
 
     json_path = out_dir / f"{code}_competency.json"
@@ -718,6 +722,7 @@ def main():
     n_ori = len(inits)
     n_envs = len(env_names_done)
     centroid_matrix = np.full((n_envs, n_ori, max_frames, 2), np.nan, dtype=np.float32)
+    distance_matrix = np.full((n_envs, n_ori, max_frames), np.nan, dtype=np.float32)
     occ_weighted_matrix = np.full((n_envs, n_ori, max_frames), np.nan, dtype=np.float32)
     occ_uniform_matrix = np.full((n_envs, n_ori, max_frames), np.nan, dtype=np.float32)
     occ_max_matrix = np.full((n_envs, n_ori, max_frames), np.nan, dtype=np.float32)
@@ -727,6 +732,7 @@ def main():
         for oi, c in enumerate(env_data['centroids_per_ori']):
             T = c.shape[0]
             centroid_matrix[ei, oi, :T, :] = c
+            distance_matrix[ei, oi, :T] = env_data['distances_per_ori'][oi]
             occ_weighted_matrix[ei, oi, :T] = env_data['occ_weighted_per_ori'][oi]
             occ_uniform_matrix[ei, oi, :T] = env_data['occ_uniform_per_ori'][oi]
             occ_max_matrix[ei, oi, :T] = env_data['occ_max_per_ori'][oi]
@@ -734,6 +740,7 @@ def main():
 
     centroid_npz_path = out_dir / f"{code}_centroids.npz"
     np.savez(centroid_npz_path, centroids=centroid_matrix,
+             distance=distance_matrix,
              occlusion_weighted=occ_weighted_matrix,
              occlusion_uniform=occ_uniform_matrix,
              occlusion_max=occ_max_matrix,

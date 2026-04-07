@@ -225,7 +225,7 @@ def test_batched_trajectory(n_steps=50, tol=1e-4):
 def test_flag_default():
     """Verify that fft=False (default) uses spatial and fft=True uses FFT."""
     print("\n" + "=" * 60)
-    print("TEST 5: Flag wiring — default=spatial, fft=True=FFT")
+    print("TEST 5: Flag wiring — default=FFT, fft=False=spatial")
     print("=" * 60)
 
     animals = load_animals("animals.json", codes=["O2u"])
@@ -236,29 +236,191 @@ def test_flag_default():
     auto_spatial = Automaton(cfg, fft=False)
     auto_fft = Automaton(cfg, fft=True)
 
-    assert not auto_default.use_fft, "Default should be spatial (use_fft=False)"
+    assert auto_default.use_fft, "Default should be FFT (use_fft=True)"
     assert not auto_spatial.use_fft, "Explicit fft=False should be spatial"
     assert auto_fft.use_fft, "Explicit fft=True should be FFT"
 
-    # Run one step each and verify default == spatial (bitwise identical)
+    # Run one step each and verify default == fft=True (bitwise identical)
     board_default = Board(cfg)
-    board_spatial = Board(cfg)
+    board_fft = Board(cfg)
     torch.manual_seed(42)
     state = torch.rand(*cfg.grid_shape, device=cfg.device, dtype=cfg.dtype)
     board_default.cells = state.clone()
-    board_spatial.cells = state.clone()
+    board_fft.cells = state.clone()
 
     auto_default.step(board_default)
-    auto_spatial.step(board_spatial)
+    auto_fft.step(board_fft)
 
-    identical = torch.equal(board_default.tensor, board_spatial.tensor)
+    identical = torch.equal(board_default.tensor, board_fft.tensor)
     status = "PASS" if identical else "FAIL"
-    print(f"  default == spatial (bitwise): {identical}  [{status}]")
+    print(f"  default == fft=True (bitwise): {identical}  [{status}]")
 
     print(f"  auto_default.use_fft = {auto_default.use_fft}")
     print(f"  auto_fft.use_fft     = {auto_fft.use_fft}")
 
     return identical
+
+
+def test_impulse_response(tol=1e-5):
+    """Single 1.0 at grid center — FFT excitation should reproduce the kernel."""
+    from torch.fft import rfft2, irfft2
+
+    print("\n" + "=" * 60)
+    print("TEST 6: Impulse response — FFT excitation matches kernel")
+    print("=" * 60)
+
+    animals = load_animals("animals.json", codes=["O2u"])
+    animal = animals[0]
+    cfg = Config.from_animal(animal, base_grid=64, scale=1)
+    automaton = Automaton(cfg, fft=True)
+    H, W = cfg.grid_shape
+
+    # Place single impulse at grid center
+    state = torch.zeros(H, W, device=cfg.device, dtype=cfg.dtype)
+    cy, cx = H // 2, W // 2
+    state[cy, cx] = 1.0
+
+    exc = irfft2(rfft2(state) * automaton._kernel_fft, s=(H, W))
+
+    # The expected excitation is the kernel centered at (cy, cx).
+    # Build reference: embed kernel into grid and roll to (cy, cx).
+    K = automaton.kernel.shape[-1]
+    kernel_2d = automaton.kernel[0, 0]
+    ref = torch.zeros(H, W, device=cfg.device, dtype=cfg.dtype)
+    ref[:K, :K] = kernel_2d
+    center = K // 2
+    # Roll kernel center to (cy, cx)
+    ref = torch.roll(ref, shifts=(cy - center, cx - center), dims=(0, 1))
+
+    max_diff = (exc - ref).abs().max().item()
+    passed = max_diff < tol
+    status = "PASS" if passed else "FAIL"
+    print(f"  grid={H}x{W}  kernel={K}x{K}  max_diff={max_diff:.2e}  [{status}]")
+    return passed
+
+
+def test_uniform_input(tol=1e-6):
+    """Uniform grid c=0.5 — excitation should be c everywhere (kernel sums to 1)."""
+    from torch.fft import rfft2, irfft2
+
+    print("\n" + "=" * 60)
+    print("TEST 7: Uniform input — excitation equals constant c")
+    print("=" * 60)
+
+    animals = load_animals("animals.json", codes=["O2u"])
+    animal = animals[0]
+    cfg = Config.from_animal(animal, base_grid=64, scale=1)
+    automaton = Automaton(cfg, fft=True)
+    H, W = cfg.grid_shape
+
+    c = 0.5
+    state = torch.full((H, W), c, device=cfg.device, dtype=cfg.dtype)
+    exc = irfft2(rfft2(state) * automaton._kernel_fft, s=(H, W))
+
+    max_dev = (exc - c).abs().max().item()
+    passed = max_dev < tol
+    status = "PASS" if passed else "FAIL"
+    print(f"  c={c}  grid={H}x{W}  max_deviation={max_dev:.2e}  [{status}]")
+    return passed
+
+
+def test_renorm_no_mask(tol=1e-6):
+    """Renormalized convolution with blind_mask=zeros should match standard FFT."""
+    print("\n" + "=" * 60)
+    print("TEST 8: Renormalized conv (no mask) matches standard FFT")
+    print("=" * 60)
+
+    animals = load_animals("animals.json", codes=["O2u"])
+    animal = animals[0]
+    cfg = Config.from_animal(animal, base_grid=64, scale=1)
+    automaton = Automaton(cfg, fft=True)
+    H, W = cfg.grid_shape
+
+    torch.manual_seed(77)
+    state = torch.rand(H, W, device=cfg.device, dtype=cfg.dtype)
+
+    board_std = Board(cfg)
+    board_std.cells = state.clone()
+
+    board_renorm = Board(cfg)
+    board_renorm.cells = state.clone()
+
+    # Standard FFT step
+    automaton.step(board_std)
+
+    # Renormalized step with no masking (all zeros = fully visible)
+    no_mask = torch.zeros(H, W, device=cfg.device, dtype=cfg.dtype)
+    automaton.step(board_renorm, blind_mask=no_mask)
+
+    max_diff = (board_std.tensor - board_renorm.tensor).abs().max().item()
+    passed = max_diff < tol
+    status = "PASS" if passed else "FAIL"
+    print(f"  grid={H}x{W}  max_diff={max_diff:.2e}  [{status}]")
+    return passed
+
+
+def test_nonsquare_grids(tol=1e-5):
+    """FFT vs spatial on non-square grids (64x128, 128x64)."""
+    print("\n" + "=" * 60)
+    print("TEST 9: Non-square grids — FFT vs spatial")
+    print("=" * 60)
+
+    animals = load_animals("animals.json", codes=["O2u"])
+    animal = animals[0]
+
+    all_pass = True
+    for grid_shape in [(64, 128), (128, 64)]:
+        cfg = Config.from_animal(animal, base_grid=grid_shape, scale=1)
+        auto_fft = Automaton(cfg, fft=True)
+        auto_spatial = Automaton(cfg, fft=False)
+        H, W = cfg.grid_shape
+
+        torch.manual_seed(42)
+        state = torch.rand(H, W, device=cfg.device, dtype=cfg.dtype)
+
+        exc_fft = excitation_fft(auto_fft, state)
+        exc_conv = excitation_conv2d(auto_spatial, state)
+
+        max_diff = (exc_fft - exc_conv).abs().max().item()
+        passed = max_diff < tol
+        status = "PASS" if passed else "FAIL"
+        print(f"  grid={H}x{W}  max_diff={max_diff:.2e}  [{status}]")
+        if not passed:
+            all_pass = False
+
+    return all_pass
+
+
+def test_odd_even_grids(tol=1e-5):
+    """FFT vs spatial on odd and even grid sizes (63, 64, 65)."""
+    print("\n" + "=" * 60)
+    print("TEST 10: Odd vs even grid sizes — FFT vs spatial")
+    print("=" * 60)
+
+    animals = load_animals("animals.json", codes=["O2u"])
+    animal = animals[0]
+
+    all_pass = True
+    for size in [63, 64, 65]:
+        cfg = Config.from_animal(animal, base_grid=size, scale=1)
+        auto_fft = Automaton(cfg, fft=True)
+        auto_spatial = Automaton(cfg, fft=False)
+        H, W = cfg.grid_shape
+
+        torch.manual_seed(42)
+        state = torch.rand(H, W, device=cfg.device, dtype=cfg.dtype)
+
+        exc_fft = excitation_fft(auto_fft, state)
+        exc_conv = excitation_conv2d(auto_spatial, state)
+
+        max_diff = (exc_fft - exc_conv).abs().max().item()
+        passed = max_diff < tol
+        status = "PASS" if passed else "FAIL"
+        print(f"  grid={size}x{size}  max_diff={max_diff:.2e}  [{status}]")
+        if not passed:
+            all_pass = False
+
+    return all_pass
 
 
 if __name__ == "__main__":
@@ -268,6 +430,11 @@ if __name__ == "__main__":
     results.append(("Trajectory divergence (fft=T vs fft=F)", test_trajectory_divergence()))
     results.append(("Batched consistency (both paths)", test_batched_trajectory()))
     results.append(("Flag wiring", test_flag_default()))
+    results.append(("Impulse response", test_impulse_response()))
+    results.append(("Uniform input", test_uniform_input()))
+    results.append(("Renormalized conv (no mask)", test_renorm_no_mask()))
+    results.append(("Non-square grids", test_nonsquare_grids()))
+    results.append(("Odd vs even grid sizes", test_odd_even_grids()))
 
     print("\n" + "=" * 60)
     print("SUMMARY")

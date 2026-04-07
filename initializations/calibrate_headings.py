@@ -160,10 +160,23 @@ def main():
         )
         elapsed = time.time() - t0
 
-        all_offsets[code] = {
+        # Scale-aware nested format: {code: {scale_str: {heading_rad, heading_deg, grid}}}
+        if code not in all_offsets:
+            all_offsets[code] = {}
+        # Migrate old flat format if present
+        if "heading_deg" in all_offsets.get(code, {}):
+            old = all_offsets[code]
+            old_scale = str(old.get("scale", 2))
+            all_offsets[code] = {
+                old_scale: {
+                    "heading_rad": old["heading_rad"],
+                    "heading_deg": old["heading_deg"],
+                    "grid": old.get("grid", 128),
+                }
+            }
+        all_offsets[code][str(args.scale)] = {
             "heading_rad": round(heading_rad, 6),
             "heading_deg": round(np.degrees(heading_rad), 2),
-            "scale": args.scale,
             "grid": args.grid,
         }
 

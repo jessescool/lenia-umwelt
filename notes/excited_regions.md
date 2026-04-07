@@ -15,40 +15,71 @@ Kernel blindness masks regions so they contribute **nothing** to convolution —
 
 The existing `blind_mask` code (`lenia.py:279-288`) sets `visible = 1 - blind_mask`, which is the special case W = 1 - M where M is binary. Replacing `visible` with an arbitrary salience map W generalizes the entire system.
 
-## Renormalized Convolution with Salience
+## Equations
 
-The general form, directly extending the existing FFT path:
+### Eq. 1 — Standard Lenia Excitation (no mask)
 
-```
-K_fft = FFT(kernel)
+The excitation at cell $\mathbf{x}$ is a kernel-weighted average of the state field:
 
-numerator   = IFFT( FFT(state * W) * K_fft )
-denominator = IFFT( FFT(W)         * K_fft )
-excitation  = numerator / clamp(denominator, min=eps)
-```
+$$E(\mathbf{x}) = (K * C)(\mathbf{x}) = \sum_{\mathbf{y}} K(\mathbf{y} - \mathbf{x}) \cdot C(\mathbf{y})$$
 
-This is a **weighted average** of the state, where kernel shape determines *which* neighbors matter and W determines *how much* each neighbor's contribution is scaled before averaging.
+where $K$ is the normalized kernel ($\sum K = 1$) and $C$ is the state field $C(\mathbf{x}) \in [0, 1]$. In the FFT implementation (`lenia.py:289-291`):
 
-### Why renormalization matters
+$$E = \mathcal{F}^{-1}\!\Big[\, \mathcal{F}[C] \cdot \mathcal{F}[K] \,\Big]$$
 
-Without the denominator, W > 1 inflates raw excitation values, pushing cells into different growth regimes — the creature's physics change. With renormalization, the denominator compensates: if excited cells contribute 2x to the numerator, they also contribute 2x to the denominator. The *ratio* stays bounded. What changes is the **weighting** — excited cells have disproportionate influence on the average, but the average itself stays in the normal excitation range.
+### Eq. 2 — Renormalized Convolution with Blind Mask (current code)
 
-This is the key property: renormalized excitation reshapes **what the creature pays attention to** without breaking its dynamical regime. The creature's growth function still receives excitation values it "knows how to handle."
+When a binary blind mask $M(\mathbf{x}) \in \{0, 1\}$ is present, the current code (`lenia.py:279-288`) first computes visibility:
 
-### Current code as special case
+$$V(\mathbf{x}) = 1 - M(\mathbf{x})$$
 
-From `lenia.py:279-288`:
-```python
-visible = 1 - blind_mask          # W = 1 - M
-masked_current = current * visible  # state * W
-exc_fft = rfft2(masked_current) * kfft
-vis_fft = rfft2(visible) * kfft
-excitation = irfft2(exc_fft, s=(H, W))
-vis_weight = irfft2(vis_fft, s=(H, W))
-excitation = excitation / vis_weight.clamp(min=1e-6)
-```
+then the renormalized excitation:
 
-To support excited regions, the only change is letting W take values > 1. The math is identical. No new machinery needed.
+$$E(\mathbf{x}) = \frac{(K * (C \cdot V))(\mathbf{x})}{(K * V)(\mathbf{x})} = \frac{\displaystyle\sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot C(\mathbf{y}) \cdot V(\mathbf{y})}{\displaystyle\sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot V(\mathbf{y})}$$
+
+This is a **weighted average** of $C$ over visible cells only. The denominator renormalizes so that excitation magnitude stays in the range the growth function expects, regardless of how much of the kernel footprint is masked.
+
+### Eq. 3 — Generalized Salience Field (proposed)
+
+Replace the binary visibility $V$ with a continuous **salience field** $W(\mathbf{x}) \geq 0$:
+
+$$E_W(\mathbf{x}) = \frac{(K * (C \cdot W))(\mathbf{x})}{(K * W)(\mathbf{x})} = \frac{\displaystyle\sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot C(\mathbf{y}) \cdot W(\mathbf{y})}{\displaystyle\sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot W(\mathbf{y})}$$
+
+FFT implementation:
+
+$$\hat{K} = \mathcal{F}[K]$$
+
+$$E_W = \frac{\mathcal{F}^{-1}\!\Big[\, \mathcal{F}[C \cdot W] \cdot \hat{K} \,\Big]}{\max\!\Big(\, \mathcal{F}^{-1}\!\Big[\, \mathcal{F}[W] \cdot \hat{K} \,\Big],\; \varepsilon \,\Big)}$$
+
+### Special cases
+
+| Salience $W(\mathbf{x})$ | Reduces to | Code path |
+|---|---|---|
+| $W = 1$ everywhere | Eq. 1 (standard) | `lenia.py:289-291` — denominator $= \sum K = 1$, cancels |
+| $W = 1 - M,\; M \in \{0,1\}$ | Eq. 2 (blind mask) | `lenia.py:279-288` — current implementation |
+| $W \in (0, 1)$ | Partial blindness | Attenuated sensory input |
+| $W > 1$ | **Excited region** | Amplified sensory weight — new |
+
+### Why renormalization preserves dynamics
+
+The key invariant: when $W$ is spatially uniform ($W = c$ for any constant $c > 0$), the constant cancels:
+
+$$E_W(\mathbf{x}) = \frac{\sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot C(\mathbf{y}) \cdot c}{\sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot c} = \sum_{\mathbf{y}} K(\mathbf{y}-\mathbf{x}) \cdot C(\mathbf{y}) = E(\mathbf{x})$$
+
+So uniform salience of any magnitude is identical to standard Lenia. Only **spatial variation** in $W$ affects behavior. This means:
+- The growth function $G(E)$ always receives excitation in its native range
+- $W$ reshapes **what the creature attends to**, not the magnitude of its response
+- No risk of pushing excitation into a foreign dynamical regime
+
+### Growth and update (unchanged)
+
+After excitation, the existing pipeline applies identically:
+
+$$G(E) = 2\exp\!\left(-\frac{(E - \mu)^2}{2\sigma^2}\right) - 1 \qquad \text{(Gaussian growth, gtype=2)}$$
+
+$$C(\mathbf{x},\, t + \Delta t) = \mathrm{clamp}\!\Big(\, C(\mathbf{x}, t) + \Delta t \cdot G\big(E_W(\mathbf{x})\big),\; 0,\; 1 \,\Big)$$
+
+The growth function and update rule are agnostic to how $E$ was computed.
 
 ## Interpretation: Attentional Spotlight
 

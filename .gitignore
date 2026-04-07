@@ -1,5 +1,7 @@
 # All results/outputs go here (except FINDINGS)
 results/*
+backups/*
+
 !results/FINDINGS/
 
 # Ignore old files/directories

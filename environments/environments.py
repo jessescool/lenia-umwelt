@@ -406,6 +406,113 @@ ENVIRONMENTS = {
 }
 
 
+def barrier_to_salience(mask: torch.Tensor) -> torch.Tensor:
+    """Convert binary barrier mask (1=blind) to salience field (W = 1 - M)."""
+    return 1.0 - mask
+
+
+# ---------------------------------------------------------------------------
+# Salience environment generators
+# ---------------------------------------------------------------------------
+# Each returns an [H, W] tensor with W=1.0 as background.
+# W=0 is blind, W>1 is amplified sensory weighting (excited region).
+
+def make_salience_wall(
+    shape: Tuple[int, int],
+    device: torch.device,
+    dtype: torch.dtype = torch.float32,
+    amplitude: float = 2.0,
+    thickness: int = 8,
+    scale_factor: float = 1.0,
+) -> torch.Tensor:
+    """Vertical strip of amplified salience at x=2W/3."""
+    h, w = shape
+    t = _s(thickness, scale_factor)
+    sal = torch.ones(shape, dtype=dtype, device=device)
+    wall_x = 2 * w // 3
+    x_start = max(0, wall_x - t // 2)
+    x_end = min(w, wall_x + (t + 1) // 2)
+    sal[:, x_start:x_end] = amplitude
+    return sal
+
+
+def make_salience_box(
+    shape: Tuple[int, int],
+    device: torch.device,
+    dtype: torch.dtype = torch.float32,
+    amplitude: float = 2.0,
+    border_width: int = 8,
+    scale_factor: float = 1.0,
+) -> torch.Tensor:
+    """Rectangular perimeter of amplified salience."""
+    h, w = shape
+    bw = _s(border_width, scale_factor)
+    sal = torch.ones(shape, dtype=dtype, device=device)
+    sal[:bw, :] = amplitude
+    sal[-bw:, :] = amplitude
+    sal[:, :bw] = amplitude
+    sal[:, -bw:] = amplitude
+    return sal
+
+
+def make_salience_corridor(
+    shape: Tuple[int, int],
+    device: torch.device,
+    dtype: torch.dtype = torch.float32,
+    amplitude: float = 2.0,
+    channel_height: int = 38,
+    scale_factor: float = 1.0,
+) -> torch.Tensor:
+    """Horizontal channel of amplified salience at mid-height."""
+    h, w = shape
+    ch = _s(channel_height, scale_factor)
+    sal = torch.ones(shape, dtype=dtype, device=device)
+    cy = h // 2
+    half_ch = ch // 2
+    sal[cy - half_ch:cy + half_ch, :] = amplitude
+    return sal
+
+
+def make_salience_gradient(
+    shape: Tuple[int, int],
+    device: torch.device,
+    dtype: torch.dtype = torch.float32,
+    w_low: float = 0.5,
+    w_high: float = 2.0,
+    scale_factor: float = 1.0,
+) -> torch.Tensor:
+    """Linear salience ramp from w_low (left) to w_high (right)."""
+    h, w = shape
+    # Linearly interpolate across columns
+    ramp = torch.linspace(w_low, w_high, w, dtype=dtype, device=device)
+    sal = ramp.unsqueeze(0).expand(h, w).contiguous()
+    return sal
+
+
+SALIENCE_ENVIRONMENTS = {
+    "salience-wall": make_salience_wall,
+    "salience-box": make_salience_box,
+    "salience-corridor": make_salience_corridor,
+    "salience-gradient": make_salience_gradient,
+}
+
+
+def make_salience_env(
+    name: str,
+    shape: Tuple[int, int],
+    device: torch.device,
+    dtype: torch.dtype = torch.float32,
+    scaled: bool = False,
+) -> torch.Tensor:
+    """Build salience environment by name.
+
+    If scaled=True, pixel dimensions adapt proportionally to grid size
+    relative to the 128x256 reference.
+    """
+    sf = compute_scale_factor(shape) if scaled else 1.0
+    return SALIENCE_ENVIRONMENTS[name](shape, device, dtype, scale_factor=sf)
+
+
 def make_env(
     name: str,
     shape: Tuple[int, int],
