@@ -1,3 +1,4 @@
+# experiments/plot_barrier_avoidance.py — Jesse Cool (jessescool)
 """Six-panel barrier avoidance figure with trajectory flow fields."""
 
 import argparse

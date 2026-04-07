@@ -1,3 +1,4 @@
+# experiments/sweep.py — Jesse Cool (jessescool)
 """Exhaustive perturbation sweep over all grid positions."""
 
 import argparse

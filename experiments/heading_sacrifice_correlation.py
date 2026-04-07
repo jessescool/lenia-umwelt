@@ -1,3 +1,4 @@
+# experiments/heading_sacrifice_correlation.py — Jesse Cool (jessescool)
 """Correlation between morphological disruption severity and heading change."""
 
 import argparse

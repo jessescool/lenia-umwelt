@@ -1,3 +1,4 @@
+# experiments/competency_profile.py — Jesse Cool (jessescool)
 """Competency profiles: attractor basin cross-sections across intervention sizes.
 
 The *shape* of these curves -- linear? threshold? gradual? -- tells you about

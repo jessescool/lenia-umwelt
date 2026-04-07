@@ -1,3 +1,4 @@
+# experiments/analyze_env_competency.py — Jesse Cool (jessescool)
 """Analyze environment competency results: heatmaps and polar plots."""
 
 import argparse

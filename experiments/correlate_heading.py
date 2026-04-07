@@ -1,3 +1,4 @@
+# experiments/correlate_heading.py — Jesse Cool (jessescool)
 """Hexbin density plots of heading change vs other metrics."""
 
 import argparse

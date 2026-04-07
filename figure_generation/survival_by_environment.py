@@ -1,3 +1,4 @@
+# figure_generation/survival_by_environment.py — Jesse Cool (jessescool)
 """Survival-by-environment bar chart."""
 
 import argparse

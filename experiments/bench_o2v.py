@@ -1,3 +1,4 @@
+# experiments/bench_o2v.py — Jesse Cool (jessescool)
 """Quick timing benchmark: O2v on 512x1024 grid with barrier."""
 import time, sys, torch
 sys.path.insert(0, '.')

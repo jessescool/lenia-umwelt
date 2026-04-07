@@ -1,3 +1,4 @@
+# initializations/verify_aligned_headings.py — Jesse Cool (jessescool)
 """Verify heading alignment across orientations.
     python initializations/verify_aligned_headings.py --scale 2 --grid 128 --orientations 0 15 30 45
 """

@@ -1,3 +1,4 @@
+# viz/competency_heatmap.py — Jesse Cool (jessescool)
 """Environment competency heatmaps and comparison figures."""
 
 from __future__ import annotations

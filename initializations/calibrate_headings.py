@@ -1,3 +1,4 @@
+# initializations/calibrate_headings.py — Jesse Cool (jessescool)
 """Calibrate heading offsets for each creature at each scale.
 """
 

@@ -1,3 +1,4 @@
+# utils/core.py — Jesse Cool (jessescool)
 """Core creature utilities."""
 
 import copy

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# experiments/replot_maps.py — Jesse Cool (jessescool)
 """Re-render map PNGs from saved analysis arrays.
 """
 

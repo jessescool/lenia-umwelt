@@ -1,3 +1,4 @@
+# viz/__init__.py — Jesse Cool (jessescool)
 """Visualization package for Lenia simulations."""
 
 import numpy as np

@@ -1,3 +1,4 @@
+# initializations/generate_initializations.py — Jesse Cool (jessescool)
 """Generate pre-settled creature tensors for sweep initialization."""
 
 import argparse

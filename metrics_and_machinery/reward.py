@@ -1,3 +1,4 @@
+# metrics_and_machinery/reward.py — Jesse Cool (jessescool)
 """Reward functions for Lenia RL."""
 
 from __future__ import annotations

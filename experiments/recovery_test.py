@@ -1,3 +1,4 @@
+# experiments/recovery_test.py — Jesse Cool (jessescool)
 """Single-creature recovery test with side-by-side GIF output."""
 
 import argparse

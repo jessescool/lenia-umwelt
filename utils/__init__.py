@@ -1,3 +1,4 @@
+# utils/__init__.py — Jesse Cool (jessescool)
 """
 Shared utilities for curriculum RL training and evaluation.
 

@@ -1,3 +1,4 @@
+# experiments/preview_creatures.py — Jesse Cool (jessescool)
 """Render preview GIFs for creatures in the manifest."""
 import sys
 from pathlib import Path

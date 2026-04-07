@@ -1,3 +1,4 @@
+# viz/_helpers.py — Jesse Cool (jessescool)
 """
 Shared trajectory computation helpers for visualization.
 

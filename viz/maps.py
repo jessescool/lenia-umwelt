@@ -1,3 +1,4 @@
+# viz/maps.py — Jesse Cool (jessescool)
 """Spatial heatmaps and vector field plots for Lenia grid search results."""
 
 from __future__ import annotations

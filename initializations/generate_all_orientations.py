@@ -1,3 +1,4 @@
+# initializations/generate_all_orientations.py — Jesse Cool (jessescool)
 """Generate all-orientations tensor bundles from individual inits.
     python initializations/generate_all_orientations.py -c O2u -s 4 -g 48 --heading-offset 72.3
 """

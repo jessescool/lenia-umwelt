@@ -1,3 +1,4 @@
+# environments/environments.py — Jesse Cool (jessescool)
 """Barrier environment generators for constrained Lenia simulations."""
 
 from __future__ import annotations

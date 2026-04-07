@@ -1,3 +1,4 @@
+# utils/batched.py — Jesse Cool (jessescool)
 """Batched simulation utilities for GPU-parallel rollout and intervention."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# metrics_and_machinery/__init__.py — Jesse Cool (jessescool)
 """Metrics and machinery for Lenia perturbation experiments."""
 
 from metrics_and_machinery.distance_metrics import (

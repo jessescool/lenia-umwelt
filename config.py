@@ -1,3 +1,4 @@
+# config.py — Jesse Cool (jessescool)
 """Default constants for grid size, timing, and display."""
 
 DEFAULT_GRID_SIZE = 64

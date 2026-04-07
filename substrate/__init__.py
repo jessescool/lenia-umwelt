@@ -1,3 +1,4 @@
+# substrate/__init__.py — Jesse Cool (jessescool)
 """Core Lenia substrate: simulation primitives decoupled from RL."""
 
 from substrate.lenia import Config, Board, Automaton, Lenia, build_kernel, ArrayLike

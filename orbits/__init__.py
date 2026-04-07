@@ -1,3 +1,4 @@
+# orbits/__init__.py — Jesse Cool (jessescool)
 from .orbits import (
     build_orbit,
     build_profiles,

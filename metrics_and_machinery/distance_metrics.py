@@ -1,3 +1,4 @@
+# metrics_and_machinery/distance_metrics.py — Jesse Cool (jessescool)
 """Distance metrics for comparing Lenia grids."""
 
 import torch

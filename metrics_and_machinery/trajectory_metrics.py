@@ -1,3 +1,4 @@
+# metrics_and_machinery/trajectory_metrics.py — Jesse Cool (jessescool)
 """Trajectory-level metrics for characterizing Lenia recovery dynamics."""
 
 import torch

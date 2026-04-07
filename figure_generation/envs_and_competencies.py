@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# figure_generation/envs_and_competencies.py — Jesse Cool (jessescool)
 """Environment gallery with competency overlays."""
 
 from __future__ import annotations

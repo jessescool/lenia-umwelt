@@ -1,3 +1,4 @@
+# experiments/plot_centroids.py — Jesse Cool (jessescool)
 """Per-environment centroid displacement plots."""
 
 import argparse

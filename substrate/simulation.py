@@ -1,3 +1,4 @@
+# substrate/simulation.py — Jesse Cool (jessescool)
 """Core Simulation class for Lenia environments."""
 from __future__ import annotations
 

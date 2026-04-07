@@ -1,3 +1,4 @@
+# experiments/run_env_competency.py — Jesse Cool (jessescool)
 """Score one creature's competency across barrier environments."""
 
 import argparse

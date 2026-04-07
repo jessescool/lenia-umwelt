@@ -1,3 +1,4 @@
+# experiments/recovery_sweep.py — Jesse Cool (jessescool)
 """Recovery property sweep across multiple orientations."""
 
 import argparse

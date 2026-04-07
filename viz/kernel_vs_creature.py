@@ -1,3 +1,4 @@
+# viz/kernel_vs_creature.py — Jesse Cool (jessescool)
 """Visualize a Lenia creature alongside its kernel, showing relative size and weights."""
 from __future__ import annotations
 

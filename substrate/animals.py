@@ -1,3 +1,4 @@
+# substrate/animals.py — Jesse Cool (jessescool)
 """Animal catalog helpers combined with Lenia RLE decoding primitives."""
 from __future__ import annotations
 

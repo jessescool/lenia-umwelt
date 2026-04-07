@@ -1,3 +1,4 @@
+# metrics_and_machinery/interventions.py — Jesse Cool (jessescool)
 """Intervention strategies for Lenia perturbations."""
 
 from __future__ import annotations

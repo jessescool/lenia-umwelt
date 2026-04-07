@@ -1,3 +1,4 @@
+# experiments/run_single_env_gif.py — Jesse Cool (jessescool)
 """Run a single creature through one environment, save a GIF."""
 
 from __future__ import annotations

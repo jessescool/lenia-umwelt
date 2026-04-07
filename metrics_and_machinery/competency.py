@@ -1,3 +1,4 @@
+# metrics_and_machinery/competency.py — Jesse Cool (jessescool)
 """Competency scoring for environment testing.
 
 Orbit Residence Fraction (M): fraction of the experiment the creature spent

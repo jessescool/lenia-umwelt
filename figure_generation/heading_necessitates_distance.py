@@ -1,3 +1,4 @@
+# figure_generation/heading_necessitates_distance.py — Jesse Cool (jessescool)
 """Scatter plots: heading change requires centroid displacement.
 
 Output:

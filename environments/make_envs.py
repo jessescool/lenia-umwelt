@@ -1,3 +1,4 @@
+# environments/make_envs.py — Jesse Cool (jessescool)
 """Generate all environment .pt files at simulation resolution."""
 
 import argparse

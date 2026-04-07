@@ -1,3 +1,4 @@
+# utils/analysis.py — Jesse Cool (jessescool)
 """Rollout and analysis utilities for Lenia simulations."""
 
 from __future__ import annotations

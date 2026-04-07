@@ -1,3 +1,4 @@
+# experiments/morphology_vs_heading.py — Jesse Cool (jessescool)
 """Two-panel figure: morphological disruption vs heading change."""
 
 import argparse

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# figure_generation/plot_trajectory_overlay.py — Jesse Cool (jessescool)
 """Trajectory overlay on creature snapshots."""
 
 import argparse

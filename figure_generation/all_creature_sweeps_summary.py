@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# figure_generation/all_creature_sweeps_summary.py — Jesse Cool (jessescool)
 """Composite summary grid of all creature sweep results."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# experiments/run_env_batch.py — Jesse Cool (jessescool)
 """Batch-run a single creature through all environments."""
 
 from __future__ import annotations

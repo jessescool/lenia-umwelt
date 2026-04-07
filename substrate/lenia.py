@@ -1,3 +1,4 @@
+# substrate/lenia.py — Jesse Cool (jessescool)
 """Core Lenia environment primitives and kernel utilities."""
 from __future__ import annotations
 

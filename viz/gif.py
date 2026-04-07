@@ -1,3 +1,4 @@
+# viz/gif.py — Jesse Cool (jessescool)
 """GIF rendering for Lenia simulations."""
 
 from __future__ import annotations

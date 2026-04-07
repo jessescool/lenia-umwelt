@@ -1,3 +1,4 @@
+# environments/env_previews.py — Jesse Cool (jessescool)
 """Generate preview PNGs from precomputed environment tensors."""
 
 import argparse

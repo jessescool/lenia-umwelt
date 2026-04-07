@@ -1,3 +1,4 @@
+# orbits/orbit_batch.py — Jesse Cool (jessescool)
 """Run full orbit pipeline (raw → profile → distances → orbit) for a creature at multiple scales."""
 
 import argparse

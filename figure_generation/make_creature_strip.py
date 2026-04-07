@@ -1,3 +1,4 @@
+# figure_generation/make_creature_strip.py — Jesse Cool (jessescool)
 """Render a horizontal strip of all creature thumbnails."""
 
 import argparse

@@ -1,3 +1,4 @@
+# orbits/orbits.py — Jesse Cool (jessescool)
 """Orbit pipeline: raw frames, profiles, distances, orbit summary."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# experiments/env_competency_sweep.py — Jesse Cool (jessescool)
 """Measure orbit residence across barrier environments."""
 
 import argparse

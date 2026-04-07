@@ -1,3 +1,4 @@
+# viz/orbits.py — Jesse Cool (jessescool)
 """Visualize raw orbit datasets as GIFs."""
 
 from __future__ import annotations

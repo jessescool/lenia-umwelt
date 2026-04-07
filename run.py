@@ -1,3 +1,4 @@
+# run.py — Jesse Cool (jessescool)
 """Quick Lenia preview. Usage: python run.py <animal_code>"""
 import sys
 from pathlib import Path

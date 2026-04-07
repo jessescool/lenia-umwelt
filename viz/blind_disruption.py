@@ -1,3 +1,4 @@
+# viz/blind_disruption.py — Jesse Cool (jessescool)
 """Visualize how blindness disrupts a Lenia creature's sensory pipeline.
 
 Two parts:

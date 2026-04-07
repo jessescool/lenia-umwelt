@@ -1,3 +1,4 @@
+# initializations/verify_headings.py — Jesse Cool (jessescool)
 """Verify heading calibration with arrow overlay plots."""
 
 import argparse

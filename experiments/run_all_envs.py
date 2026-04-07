@@ -1,3 +1,4 @@
+# experiments/run_all_envs.py — Jesse Cool (jessescool)
 """Run creatures through all barrier environments, producing GIFs."""
 
 import argparse

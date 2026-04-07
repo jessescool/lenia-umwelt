@@ -1,3 +1,4 @@
+# substrate/scaling.py — Jesse Cool (jessescool)
 """Scaling utilities for resolution-independent creature preparation."""
 from __future__ import annotations
 
