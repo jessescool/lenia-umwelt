@@ -1,14 +1,4 @@
-"""
-Orbit pipeline for Lenia creatures.
-
-Consolidated pipeline: raw frames → sorted activation profiles → W1 distances.
-
-Subcommands:
-    python orbits/orbits.py raw -c O2u -s 2
-    python orbits/orbits.py profile orbits/O2u/s2/O2u_s2_raw.pt
-    python orbits/orbits.py distances orbits/O2u/s2/O2u_s2_profile.pt
-    python orbits/orbits.py orbit orbits/O2u/s2/O2u_s2_profile.pt
-"""
+"""Orbit pipeline: raw frames, profiles, distances, orbit summary."""
 
 from __future__ import annotations
 

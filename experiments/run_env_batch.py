@@ -1,22 +1,4 @@
-"""Run creature(s) through selected barrier environments and save GIFs.
-
-Init-dir mode (pre-settled orientations):
-    python experiments/run_env_batch.py \
-        --init-dir initializations/K4s/s2 --code K4s \
-        --envs membrane_1px funnel maze \
-        --grid 128x256 --steps 400 --scaled
-
-Single-animal mode (legacy, computes rotations on the fly):
-    python experiments/run_env_batch.py \
-        --envs membrane_1px funnel maze \
-        --code O2u --scale 2 --steps 400
-
-Manifest mode (all animals from manifest):
-    python experiments/run_env_batch.py \
-        --manifest animals_to_run.json \
-        --envs membrane_1px funnel maze \
-        --scale 2 --steps 400 --scaled
-"""
+"""Batch-run a single creature through all environments."""
 
 from __future__ import annotations
 
@@ -103,7 +85,6 @@ def run_single_env_from_init(env_name, code, base_grid, scale, steps,
     for sit in situations:
         sit_idx = sit['sit_idx']
 
-        # Extract creature pattern from full settled board
         pattern = extract_pattern(sit['tensor'])
         ph, pw = pattern.shape
 

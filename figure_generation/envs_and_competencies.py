@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""Tall skinny figure: env thumbnails (left) with survival bars (right).
-
-Each row: env thumbnail at 0.75 scale, bar plot matching its height, ~2x its width.
-
-Usage:
-    python figure_generation/envs_and_competencies.py
-    python figure_generation/envs_and_competencies.py --lambda 5
-"""
+"""Environment gallery with competency overlays."""
 
 from __future__ import annotations
 

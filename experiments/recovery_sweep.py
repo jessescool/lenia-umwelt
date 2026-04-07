@@ -1,18 +1,4 @@
-"""
-Recovery sweep: run recovery_test at many orientations of the same creature.
-
-Tests whether recovery from perturbation (goal-directedness) depends on the
-creature's orientation. The orbit c_bar (sorted activation profile barycenter)
-is rotation-invariant by construction, so the same orbit file works for all
-angles. A baseline stability plot verifies this empirically.
-
-Usage:
-    python experiments/recovery_sweep.py \
-        --code O2u --scale 2 --grid 64 --shortcut \
-        --orbit orbits/O2u/s2/O2u_s2_orbit.pt \
-        --output-dir results/recovery_sweep/O2u_s2 \
-        --no-per-angle-plots
-"""
+"""Recovery property sweep across multiple orientations."""
 
 import argparse
 import copy

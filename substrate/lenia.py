@@ -47,7 +47,7 @@ class Config:
         grid_shape: int | Tuple[int, int] | None = None,  # Backwards compat alias
     ) -> "Config":
         """Build a Config from an Animal's params and desired grid size."""
-        # Handle backwards compatibility: grid_shape= is alias for base_grid
+        # grid_shape= alias for base_grid
         if base_grid is None and grid_shape is not None:
             base_grid = grid_shape
         elif base_grid is None:

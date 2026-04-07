@@ -1,20 +1,4 @@
-"""Heading sacrifice correlation: morphological disruption severity predicts heading change.
-
-Among recovered positions, bins max_distance (peak profile displacement) into quantile
-bins and plots mean |heading change| per bin. Positive slopes show that bigger disruptions
-cost more heading — heading absorbs the cost of morphological recovery.
-
-Pools across all orientations and (optionally) all intervention sizes for each creature.
-
-Usage:
-    python experiments/heading_sacrifice_correlation.py                # all sizes pooled
-    python experiments/heading_sacrifice_correlation.py --size 3       # single size
-    python experiments/heading_sacrifice_correlation.py --scale 4      # explicit scale
-    python experiments/heading_sacrifice_correlation.py --bins 20      # number of bins
-
-Output:
-    results/sweep/cross_animal/heading_sacrifice_correlation.png
-"""
+"""Correlation between morphological disruption severity and heading change."""
 
 import argparse
 import sys
@@ -129,7 +113,6 @@ def main():
 
     sizes = [args.size] if args.size is not None else SIZES
 
-    # --- collect ---
     data = {}
     for code in CREATURES:
         d = pool_creature(code, args.scale, sizes)
@@ -147,7 +130,6 @@ def main():
     codes = [c for c in CREATURES if c in data]
     tab10 = plt.cm.tab10.colors
 
-    # --- figure ---
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for i, code in enumerate(codes):
@@ -178,7 +160,6 @@ def main():
 
     fig.tight_layout()
 
-    # --- save ---
     out_dir = SWEEP_ROOT / "cross_animal"
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = f"_i{args.size}" if args.size else ""

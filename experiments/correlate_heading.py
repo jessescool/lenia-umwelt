@@ -1,17 +1,4 @@
-"""Single-run heading-change scatter: TTR & max distance vs |heading change|.
-
-Hexbin density plots for one orientation directory showing recovery severity
-vs absolute heading change, with Spearman correlation. High severity is
-necessary but not sufficient for large heading change.
-
-TTR y-axis is anchored at 5 (warmup floor = 5T) with adaptive tick spacing.
-
-Usage:
-    python experiments/correlate_heading.py results/sweep/O2u/O2u_x4/O2u_x4_i3/O2u_x4_i3_o0
-
-Output:
-    {run_dir}/analysis/{prefix}_heading_scatter.png
-"""
+"""Hexbin density plots of heading change vs other metrics."""
 
 import argparse
 import sys

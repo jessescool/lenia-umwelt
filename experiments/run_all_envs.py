@@ -1,12 +1,4 @@
-"""Run all creatures through all environments using pre-settled initializations.
-
-Reads animals_to_run.json, loads .pt inits from initializations/{code}/s{scale}/,
-and runs every orientation through every environment.
-
-Usage:
-    python experiments/run_all_envs.py --scale 2 --steps 600
-    python experiments/run_all_envs.py --scale 2 --steps 600 --code O2u
-"""
+"""Run creatures through all barrier environments, producing GIFs."""
 
 import argparse
 from pathlib import Path
@@ -50,7 +42,6 @@ def main():
     base_grid = parse_grid(args.grid)
     env_names = sorted(ENVIRONMENTS.keys())
 
-    # Build list of codes to run
     if args.code:
         codes = [args.code]
     else:

@@ -1,16 +1,4 @@
-"""Environment competency sweep: score creatures navigating barrier environments.
-
-Measures Orbit Residence Fraction (M) — the fraction of the run the creature
-spends alive AND morphologically intact — for each creature × environment ×
-orientation combination.
-
-Usage:
-    python experiments/env_competency_sweep.py --code O2u --scale 4
-    python experiments/env_competency_sweep.py --code O2v --scale 4 --envs box funnel
-    python experiments/env_competency_sweep.py --all --scale 4
-
-Output: results/env_competency/{CODE}/{CODE}_competency.json  (+ .npz)
-"""
+"""Measure orbit residence across barrier environments."""
 
 import argparse
 import json
@@ -89,7 +77,6 @@ def run_one(
 
     cfg = Config.from_animal(animal, base_grid=base_grid, scale=scale)
 
-    # Compute steps scaled by T
     T = cfg.timescale_T
     steps = max(MIN_STEPS, int(N_PERIODS * T))
 
@@ -103,7 +90,6 @@ def run_one(
     d_max = orbit_data['d_max']
     competency_threshold = COMPETENCY_LAMBDA_MULT * lam * d_max
 
-    # Extract creature pattern from settled board
     pattern = extract_pattern(init_dict['tensor'])
     ph, pw = pattern.shape
 

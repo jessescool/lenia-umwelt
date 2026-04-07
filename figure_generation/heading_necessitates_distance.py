@@ -1,14 +1,4 @@
-"""Cross-animal heading-change scatter: 2xN grid (TTR + max_distance) x creatures.
-
-For each creature, pools all orientations at a given scale and intervention size,
-then plots hexbin density of recovery severity (TTR, max displacement) vs absolute
-heading change. Shared LogNorm color scale across creatures per metric row.
-
-TTR y-axis is anchored at 5 (warmup floor = 5T) with adaptive tick spacing.
-
-Usage:
-    python figure_generation/heading_necessitates_distance.py --size 3
-    python figure_generation/heading_necessitates_distance.py --size 1 --scale 4 --gridsize 30
+"""Scatter plots: heading change requires centroid displacement.
 
 Output:
     figure_generation/heading_necessitates_distance_x{SCALE}_i{SIZE}.png
@@ -103,8 +93,7 @@ def main():
                         help="Hexbin gridsize (default: 40)")
     args = parser.parse_args()
 
-    # --- collect data per creature ---
-    data = {}  # code -> (ttr, maxd, heading, n_oris, total)
+    data = {}
     for code in CREATURES:
         ttr, maxd, hc, n_oris, total = pool_orientations(code, args.scale, args.size)
         if ttr is None:
@@ -128,7 +117,6 @@ def main():
     max_n = max(len(data[c][0]) for c in codes)
     vmin_frac = 1 / max_n
 
-    # --- main figure ---
     col_w = 3.2
     w = col_w * ncols
     panel = w / (ncols + 0.3)  # approx panel width after colorbar
@@ -167,7 +155,7 @@ def main():
                 ax.set_title(f"   $\\bf{{{code}}}$  (n={n:,}/{total:,})", fontsize=11)
                 titles_to_dot.append((ax, color))
 
-        # --- TTR: put "5" at same relative offset as "0" in max_distance ---
+        # anchor TTR y-axis at 5 with same relative offset as 0 in max_distance
         ttr_ax = axes[0, col]
         ttr_hi = ttr_ax.get_ylim()[1]
         span = max(ttr_hi - 5, 2)  # floor at 2 so all-5 panels still get visible padding
@@ -184,7 +172,6 @@ def main():
             [f"{t:g}" for t in ticks]
         )
 
-    # --- single shared colorbar ---
     mappable = axes[0, -1].collections[0]
     cbar = fig.colorbar(mappable, ax=axes.ravel().tolist(),
                         location="right", shrink=0.85, pad=0.02)
@@ -204,7 +191,6 @@ def main():
     # shared x-axis label
     fig.supxlabel("Absolute heading change (\u00b0)", fontsize=12)
 
-    # --- save ---
     out_dir = ROOT / "figure_generation"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"heading_necessitates_distance_x{args.scale}_i{args.size}.png"

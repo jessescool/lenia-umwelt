@@ -1,16 +1,4 @@
-"""Generate survival-by-environment range plot.
-
-Reads per-creature .npz files from results/env_competency/ and produces
-a grouped range plot: median (solid dot), IQR (thick bar), min–max (hollow dots).
-
-Survival is defined as the last time the creature is within lambda * d_max
-of its orbit, computed from per-timestep distance arrays.
-
-Usage:
-    python figure_generation/survival_by_environment.py
-    python figure_generation/survival_by_environment.py --lambda 5
-    python figure_generation/survival_by_environment.py --codes O2u S1s K4s K6s
-"""
+"""Survival-by-environment bar chart."""
 
 import argparse
 import sys

@@ -1,15 +1,4 @@
-"""
-Visualize raw orbit datasets as GIFs (one per rotation angle).
-
-Loads a .pt file produced by `orbits/orbits.py raw` and writes
-animated GIFs. When warmup frames are present, stitches warmup + trial
-into a single GIF with a blue border during warmup.
-
-Usage:
-    python -m viz.orbits results/orbits/O2u/s1/O2u_s1_raw.pt
-    python -m viz.orbits results/orbits/O2u/s1/O2u_s1_raw.pt --angles 0 30 60 --upscale 4
-    python -m viz.orbits results/orbits/O2u/s1/O2u_s1_raw.pt --no-warmup
-"""
+"""Visualize raw orbit datasets as GIFs."""
 
 from __future__ import annotations
 

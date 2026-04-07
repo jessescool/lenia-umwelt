@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Re-render all map PNGs from saved analysis/ .npy files.
-
-No simulation needed — just loads arrays and calls viz.maps plot functions.
-Walks results/sweep/ and replots every orientation that has an analysis/ dir.
-
-Usage:
-    python scripts/replot_maps.py                # replot everything
-    python scripts/replot_maps.py --code O2u     # just one creature
-    python scripts/replot_maps.py --dry-run      # show what would be replotted
+"""Re-render map PNGs from saved analysis arrays.
 """
 
 import argparse

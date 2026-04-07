@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""Trajectory overlay figure.
-
-Plots 360 centroid trajectories per creature overlaid on an environment
-barrier mask, colored by per-timestep occlusion (or optionally W1 distance).
-Death detection uses W1 distance from orbit (lambda * d_max threshold).
-
-Data source: results/env_competency/{CODE}/{CODE}_centroids.npz
-
-Usage:
-    python figure_generation/plot_trajectory_overlay.py --env guidelines --highlight
-    python figure_generation/plot_trajectory_overlay.py --env guidelines --wasserstein
-    python figure_generation/plot_trajectory_overlay.py --env guidelines --weighted
-"""
+"""Trajectory overlay on creature snapshots."""
 
 import argparse
 import sys

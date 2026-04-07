@@ -1,10 +1,4 @@
-"""Render a labeled strip of Lenia creatures at native scale 4 resolution.
-
-Usage:
-    python make_creature_strip.py
-    python make_creature_strip.py --codes O2u K4s S1s --ori 0
-    python make_creature_strip.py --output results/my_strip.png --upscale 6
-"""
+"""Render a horizontal strip of all creature thumbnails."""
 
 import argparse
 import sys

@@ -1,15 +1,4 @@
-"""Barrier avoidance figure: trajectory flow fields + aggregate deflection analysis.
-
-6-panel figure showing Orbium actively steering away from blindness barriers.
-Top row (2x2): trajectory overlays for 4 environments.
-Bottom row (1x2): heading deflection bar chart + dose-response scatter.
-
-Runs locally (plotting only).
-
-Usage:
-    python experiments/plot_barrier_avoidance.py
-    python experiments/plot_barrier_avoidance.py --code O2u --scale 4
-"""
+"""Six-panel barrier avoidance figure with trajectory flow fields."""
 
 import argparse
 import sys

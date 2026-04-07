@@ -1,14 +1,4 @@
-"""Plot centroid trajectories overlaid on environment barrier masks.
-
-Produces one PNG per (environment, heading) pair with black background,
-gray barrier overlay, yellow trajectory, and red endpoint.
-
-Usage:
-    python experiments/plot_centroids.py --code O2u --headings 4
-    python experiments/plot_centroids.py --code O2u --headings 8 --envs box funnel corridor
-    python experiments/plot_centroids.py --code O2u --headings 0  # all orientations
-    python experiments/plot_centroids.py --code O2u --ori 0       # single orientation
-"""
+"""Per-environment centroid displacement plots."""
 
 import argparse
 import sys

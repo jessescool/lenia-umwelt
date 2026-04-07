@@ -1,20 +1,4 @@
-"""Analyze environment competency results: heatmaps + polar plots.
-
-Primary metric: last_return — last simulation step where the creature's
-profile was within 1·d_max of its free-field orbit. Proxy for "how long
-did the creature remain functional in this environment."
-
-Reads per-creature .npz files from results/env_competency/ and produces:
-  - Last-return heatmap (creatures x environments), normalized to % of run
-  - Orientation sensitivity heatmap (std of last_return)
-  - Radar overlay comparing all creatures across environments
-  - Per-creature polar plots (last_return by heading for each env)
-  - Summary CSV
-
-Usage:
-    python experiments/analyze_env_competency.py
-    python experiments/analyze_env_competency.py --input results/env_competency --output results/env_competency
-"""
+"""Analyze environment competency results: heatmaps and polar plots."""
 
 import argparse
 import csv

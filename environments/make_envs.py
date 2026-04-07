@@ -1,10 +1,4 @@
-"""Generate all environment .pt files at simulation resolution.
-
-Usage:
-    python environments/make_envs.py                         # default: 128x256 base, scale 4
-    python environments/make_envs.py --grid 128x256 --scale 2
-    python environments/make_envs.py -g 64x128 -s 4 -o environments/
-"""
+"""Generate all environment .pt files at simulation resolution."""
 
 import argparse
 from pathlib import Path

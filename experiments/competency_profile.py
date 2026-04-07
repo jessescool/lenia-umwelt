@@ -1,15 +1,5 @@
 """Competency profiles: attractor basin cross-sections across intervention sizes.
 
-For each creature, plots summary statistics (recovery fraction, median TTR,
-90th percentile TTR, median heading change) as a function of intervention size.
-This maps the *gradient* of each creature's attractor basin -- how competency
-degrades as perturbation strength increases.
-
-The i1->i2->i3->i4 progression probes different regions of the basin:
-  i1: flat bottom (creature barely notices)
-  i2-i3: climbing the walls (recovery gets harder, slower, more variable)
-  i4: near the rim (some creatures pushed into different attractors)
-
 The *shape* of these curves -- linear? threshold? gradual? -- tells you about
 the topology of the attractor basin. Sharp transitions suggest a cliff-edged
 basin; gradual degradation suggests a smooth bowl.
@@ -151,7 +141,6 @@ def main():
 
     sizes = sorted(args.sizes)
 
-    # --- collect stats ---
     # stats_by[code][size] = stats_dict
     stats_by = {}
     for code in CREATURES:
@@ -172,7 +161,6 @@ def main():
     if not codes:
         sys.exit("No data found.")
 
-    # --- plot: 4 panels ---
     metric_defs = [
         ("recovery_frac", "Recovery fraction",          (0, 1.05)),
         ("median_ttr",    "Median TTR (steps)",         None),
@@ -203,7 +191,6 @@ def main():
         fontsize=13
     )
 
-    # --- save ---
     out_dir = SWEEP_ROOT / "cross_animal"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"competency_profiles_x{args.scale}.png"

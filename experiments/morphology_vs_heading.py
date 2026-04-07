@@ -1,18 +1,4 @@
-"""Morphology convergence vs heading divergence — two-panel publication figure.
-
-Panel A: stacked bar showing fraction died / recovered / never-recovered per creature.
-Panel B: violin + strip showing |heading change| (°) among recovered positions per creature.
-
-Pools across all orientations and (optionally) all intervention sizes for each creature.
-
-Usage:
-    python experiments/morphology_vs_heading.py                  # all sizes pooled
-    python experiments/morphology_vs_heading.py --size 3         # single size
-    python experiments/morphology_vs_heading.py --scale 4        # explicit scale
-
-Output:
-    results/sweep/cross_animal/morphology_vs_heading.png
-"""
+"""Two-panel figure: morphological disruption vs heading change."""
 
 import argparse
 import sys
@@ -111,7 +97,6 @@ def main():
 
     sizes = [args.size] if args.size is not None else SIZES
 
-    # --- collect ---
     data = {}
     for code in CREATURES:
         d = pool_creature(code, args.scale, sizes)
@@ -128,17 +113,14 @@ def main():
     codes = [c for c in CREATURES if c in data]
     ncols = len(codes)
 
-    # --- colors ---
     clr_recovered = "#4CAF50"   # green
     clr_died = "#E53935"        # red
     clr_never = "#FF9800"       # orange
     tab10 = plt.cm.tab10.colors
 
-    # --- figure ---
     fig, (ax_bar, ax_vio) = plt.subplots(1, 2, figsize=(12, 5),
                                           gridspec_kw={"width_ratios": [1, 1.3]})
 
-    # ---- Panel A: stacked bar ----
     x = np.arange(ncols)
     rec_rates = [data[c]["recovery_rate"] for c in codes]
     died_rates = [data[c]["died_rate"] for c in codes]
@@ -161,7 +143,6 @@ def main():
         ax_bar.text(i, rec_rates[i] / 2, f"{rec_rates[i]:.0%}",
                     ha="center", va="center", fontsize=8, fontweight="bold", color="white")
 
-    # ---- Panel B: violin + strip ----
     violin_data = [data[c]["hc_degrees"] for c in codes]
     positions = np.arange(ncols)
 
@@ -192,7 +173,6 @@ def main():
     ax_vio.set_title("B   Heading change among recovered", fontsize=11, fontweight="bold", loc="left")
     ax_vio.set_xlim(-0.6, ncols - 0.4)
 
-    # --- suptitle ---
     size_label = f"i{args.size}" if args.size else "i1–i4 pooled"
     fig.suptitle(
         f"Morphology converges, heading diverges — x{args.scale}, {size_label}",
@@ -201,7 +181,6 @@ def main():
 
     fig.tight_layout()
 
-    # --- save ---
     out_dir = SWEEP_ROOT / "cross_animal"
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = f"_i{args.size}" if args.size else ""

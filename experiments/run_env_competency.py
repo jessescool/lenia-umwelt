@@ -1,16 +1,4 @@
-"""Score one creature's competency across barrier environments.
-
-Measures Orbit Residence Fraction (M = V * F) for each environment ×
-orientation, aggregates across orientations, and saves JSON + NPZ.
-
-Usage:
-    python experiments/run_env_competency.py --code O2u --scale 4
-    python experiments/run_env_competency.py --code O2v --scale 4 --envs box funnel
-    python experiments/run_env_competency.py --code O2u --scale 4 --no-gif --quiet
-    python experiments/run_env_competency.py --code O2u --scale 4 --batch-size 128
-
-Output: results/env_competency/{CODE}/{CODE}_competency.json  (+ .npz)
-"""
+"""Score one creature's competency across barrier environments."""
 
 import argparse
 import json
@@ -153,7 +141,6 @@ def run_one(
     d_max = orbit_data['d_max']
     competency_threshold = COMPETENCY_LAMBDA_MULT * lam * d_max
 
-    # extract creature pattern from settled board
     pattern = extract_pattern(init_dict['tensor'])
     ph, pw = pattern.shape
 

@@ -1,13 +1,4 @@
-"""
-Generate heading-aligned initializations (.pt + .png) and verification GIFs.
-
-For each creature × each orientation:
-  1. Rotate by heading_offset + orientation so o0 heads along +x
-  2. Settle and recenter
-  3. Save .pt and .png to initializations/{code}/s{scale}/
-  4. Run forward 200 steps, save a GIF with heading arrow
-
-Usage:
+"""Verify heading alignment across orientations.
     python initializations/verify_aligned_headings.py --scale 2 --grid 128 --orientations 0 15 30 45
 """
 

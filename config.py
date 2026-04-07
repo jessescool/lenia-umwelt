@@ -1,9 +1,4 @@
-"""
-Shared configuration defaults for training and evaluation.
-
-This ensures training and eval use matching parameters by default.
-Override via command-line arguments as needed.
-"""
+"""Default constants for grid size, timing, and curriculum stages."""
 
 # Grid configuration
 DEFAULT_GRID_SIZE = 64  # Must match between training and eval!

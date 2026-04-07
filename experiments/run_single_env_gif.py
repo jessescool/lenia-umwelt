@@ -1,10 +1,4 @@
-"""Run one creature at a specific orientation through an environment.
-
-Saves a GIF and a tensor of all board states.
-
-Usage:
-    python experiments/run_single_env_gif.py --code O2u --ori 120 --env guidelines --steps 2000
-"""
+"""Run a single creature through one environment, save a GIF."""
 
 from __future__ import annotations
 

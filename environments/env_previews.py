@@ -1,11 +1,4 @@
-"""Generate preview PNGs from precomputed environment .pt files.
-
-Ensures previews always match what simulations actually use.
-
-Usage:
-    python environments/env_previews.py
-    python environments/env_previews.py -i environments/ -o environments/previews/
-"""
+"""Generate preview PNGs from precomputed environment tensors."""
 
 import argparse
 import math
@@ -30,7 +23,6 @@ def main():
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load in canonical ENVIRONMENTS order
     masks = {}
     for name in ENVIRONMENTS:
         pt = in_dir / f"{name}.pt"

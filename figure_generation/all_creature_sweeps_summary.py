@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-animal comparison grid: render sweep maps from raw numpy data.
-
-Single matplotlib figure at high DPI. Each cell uses imshow(aspect='equal',
-interpolation='nearest') so matplotlib renders crisp pixels at the target
-resolution — no pixel-space upscaling.
-
-Usage:
-    python figure_generation/all_creature_sweeps_summary.py --scale 4 --size 1 --ori 0
-    python figure_generation/all_creature_sweeps_summary.py --codes O2u S1s K4s K6s
-    python figure_generation/all_creature_sweeps_summary.py                  # all combos
-"""
+"""Composite summary grid of all creature sweep results."""
 
 from __future__ import annotations
 
@@ -195,7 +185,6 @@ def build_grid(scale: int, size: int, ori: int,
     if n == 1:
         axes = axes[np.newaxis, :]
 
-    # Render cells
     for i, (code, data) in enumerate(rows):
         status = data['recovery_status_map']
         _render_map(axes[i, 0], data['recovery_map'], status, cmap_name)

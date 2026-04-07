@@ -1,12 +1,4 @@
-"""
-Prepare settled "situation" tensors for sweep consumption.
-
-A situation is a creature that has been placed at a specific orientation,
-settled for 30*T steps, and recentered — ready to be perturbed by sweep.py.
-
-Usage:
-    python initializations/situations.py -c O2u -s 2 --grid 128 --num-orientations 3
-"""
+"""Generate pre-settled creature tensors for sweep initialization."""
 
 import argparse
 import copy

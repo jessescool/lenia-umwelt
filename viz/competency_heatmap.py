@@ -1,15 +1,4 @@
-"""Publication figures for environment competency results.
-
-Generates:
-  - Creature × Environment heatmap (M scores)
-  - Decomposition panel (V and F side by side)
-  - Orientation sensitivity heatmap (sigma_M)
-  - Per-creature radar plots
-
-Usage:
-    python viz/competency_heatmap.py results/env_competency/
-    python viz/competency_heatmap.py results/env_competency/ --codes O2u K4s O2v
-"""
+"""Environment competency heatmaps and comparison figures."""
 
 from __future__ import annotations
 

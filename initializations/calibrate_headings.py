@@ -1,13 +1,4 @@
-"""
-Measure each creature's natural heading direction at 0° rotation.
-
-Runs an unperturbed simulation, tracks centroids, and computes the
-circular-mean heading angle. Output is used by generate_initializations.py
-to align o0 with the +x axis (rightward travel).
-
-Usage:
-    python initializations/calibrate_headings.py --scale 2 --grid 128
-    python initializations/calibrate_headings.py --scale 2 --grid 128 --code O2u
+"""Calibrate heading offsets for each creature at each scale.
 """
 
 import argparse

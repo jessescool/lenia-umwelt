@@ -1,9 +1,4 @@
-"""
-Exhaustive grid search: test every possible intervention location.
-
-Uses GPU batching to process multiple positions simultaneously.
-Measures recovery time via variance stabilization.
-"""
+"""Exhaustive perturbation sweep over all grid positions."""
 
 import argparse
 from dataclasses import dataclass, field
@@ -222,7 +217,7 @@ def sweep(
     centroid_positions = []     # list of (x, y) tuples
     saved_ctrl_frames = None    # saved from first batch for convergence GIF
 
-    # Process in batches (no gradients needed for grid search)
+    # no gradients needed
     n_batches = (total_positions + batch_size - 1) // batch_size
     pbar = tqdm(
         range(0, total_positions, batch_size),
@@ -251,7 +246,7 @@ def sweep(
             device=device, dtype=initial_state.dtype,
         )
 
-        # Run online metrics rollout with OOM retry (halve batch on failure)
+        # OOM retry: halve batch
         rollout_kwargs = dict(
             ctrl_state=initial_state,
             automaton=automaton,

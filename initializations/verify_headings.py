@@ -1,11 +1,4 @@
-"""
-Generate GIFs showing each creature's natural travel direction at 0° rotation.
-
-Draws a heading arrow on each frame so you can visually confirm the measured angle.
-
-Usage:
-    python initializations/verify_headings.py --scale 2 --grid 128
-"""
+"""Verify heading calibration with arrow overlay plots."""
 
 import argparse
 import json
@@ -38,7 +31,6 @@ def draw_arrow(image: np.ndarray, r0: int, c0: int, angle_rad: float, length: in
     for i in range(length):
         r = int(round(r0 + dr * i)) % H
         c = int(round(c0 + dc * i)) % W
-        # Draw 3px wide line
         for off in range(-1, 2):
             image[(r + off) % H, c] = color
             image[r, (c + off) % W] = color

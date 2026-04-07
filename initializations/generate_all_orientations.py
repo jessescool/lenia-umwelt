@@ -1,13 +1,4 @@
-"""
-Precompute a dense set of heading-aligned settled orientations for a creature.
-
-Produces a single (N, H, W) tensor where index i = creature heading at i degrees
-(CCW from +x). Self-calibrates heading offset at the target scale.
-
-Also generates a spinning GIF for visual verification and extracts o0.pt for sweeps.
-
-Usage:
-    python initializations/generate_all_orientations.py -c O2u -s 4 -g 48
+"""Generate all-orientations tensor bundles from individual inits.
     python initializations/generate_all_orientations.py -c O2u -s 4 -g 48 --heading-offset 72.3
 """
 

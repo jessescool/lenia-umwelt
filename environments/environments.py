@@ -1,17 +1,4 @@
-"""Barrier environment generators for constrained Lenia simulations.
-
-Each generator creates a binary mask tensor where:
-    1.0 = barrier (impassable)
-    0.0 = open space
-
-All environments are designed for 128x256 grids by default.
-At scale=2 the actual grid is 256x512; creature ~40x40px, kernel radius ~26px.
-Barriers thinner than ~26px are semi-permeable (tunneling possible).
-
-When scaled=True, pixel dimensions (wall thickness, gap width, etc.) are
-multiplied by a factor relative to REFERENCE_SHAPE so features stay
-proportional on larger grids.
-"""
+"""Barrier environment generators for constrained Lenia simulations."""
 
 from __future__ import annotations
 
@@ -276,7 +263,6 @@ def make_shuriken(
         # Keep center open
         if math.hypot(cy - center_y, cx - center_x) < cl + r:
             continue
-        # Reject if too close to any already-placed star
         if any(math.hypot(cy - py, cx - px) < min_sep for py, px in placed):
             continue
         placed.append((cy, cx))
@@ -411,9 +397,7 @@ def barrier_to_salience(mask: torch.Tensor) -> torch.Tensor:
     return 1.0 - mask
 
 
-# ---------------------------------------------------------------------------
 # Salience environment generators
-# ---------------------------------------------------------------------------
 # Each returns an [H, W] tensor with W=1.0 as background.
 # W=0 is blind, W>1 is amplified sensory weighting (excited region).
 

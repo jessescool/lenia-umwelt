@@ -1,16 +1,4 @@
-"""
-Recovery validation: d(x, c̄) over time after perturbation.
-
-Perturb a creature at many positions, roll out, and measure how the
-sorted activation profile distance to the orbit barycenter (c̄) evolves.
-Does it spike and then drop back into the orbit band?
-
-Usage:
-    python experiments/recovery_test.py \
-        --code O2u --scale 2 --grid 64 --shortcut \
-        --orbit orbits/O2u/s2/O2u_s2_orbit.pt \
-        --output-dir results/recovery_test/O2u_s2
-"""
+"""Single-creature recovery test with side-by-side GIF output."""
 
 import argparse
 import copy
@@ -111,7 +99,6 @@ def run_recovery_test(
         mass = initial_state.sum().item()
         print(f"Settled creature ({settle_steps} steps), mass={mass:.1f}")
 
-    # Compute baseline: d(settled_state, c̄)
     baseline_profile = prepare_profile(initial_state, m)
     baseline_dist = float((baseline_profile - c_bar.to(device)).abs().mean())
     if verbose:
