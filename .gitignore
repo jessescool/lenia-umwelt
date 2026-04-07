@@ -1,25 +1,20 @@
-# All results/outputs go here (except FINDINGS)
+# Results and backups
 results/
 backups/
 
-# Ignore old files/directories
+# Legacy directories
 old/
-
-# Ignore metaLenia related files
 metalenia/
 
-# Model weights
+# Model weights (allow initializations + orbits)
 *.pt
-# But track initializations and orbits outputs
 !initializations/**/*.pt
 !orbits/**/*.pt
 
-# Ignore media files
+# Media files
 *.mp4
 *.gif
 *.png
-# But track initializations previews
-!initializations/**/*.png
 *.jpg
 *.jpeg
 *.avi
@@ -29,18 +24,17 @@ metalenia/
 *.webm
 *.mkv
 
-# Ignore other common outputs
+# Build artifacts
 *.log
 *.tmp
 __pycache__/
 *.pyc
+
+# Not shipped
 tests/
 excitation_tests/
 cluster/
 memory/
-
-# Cluster logs
-cluster/logs/
 
 # macOS
 .DS_Store
