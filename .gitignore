@@ -6,10 +6,12 @@ backups/
 old/
 metalenia/
 
-# Model weights (allow initializations + orbits)
+# Model weights (allow initializations + orbits, except large derived files)
 *.pt
 !initializations/**/*.pt
 !orbits/**/*.pt
+orbits/**/*_distances.pt
+orbits/**/*_profile.pt
 
 # Media files
 *.mp4
