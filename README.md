@@ -4,7 +4,7 @@ Code and data for *Agnosiophobia in a Virtual Agent: behavioral and dynamical ar
 
 We introduce regions of sensory occlusion into Lenia environments — areas from which no information reaches the creature's kernel — and find that several creatures avoid them, a behavior we term *agnosiophobia*. Targeted occlusions at every pixel reveal morphological sensitivity maps that trace the geometry of each creature's attractor basin. Heading change, the free variable, absorbs the cost of morphological recovery: navigational capacity lives near the boundary of the basin of attraction.
 
-Four creatures are studied: O2u (Orbium), S1s (Scutium), K4s (Quadrupedium), and K6s (Hexapodium).
+Four creatures are studied: O2u (Orbium unicaudatus), S1s (Scutium solidus), K4s (Kronium solidus), and K6s (Ferrokronium solidus).
 
 ## Repository Layout
 
