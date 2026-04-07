@@ -1,8 +1,6 @@
 # All results/outputs go here (except FINDINGS)
-results/*
-backups/*
-
-!results/FINDINGS/
+results/
+backups/
 
 # Ignore old files/directories
 old/
@@ -36,6 +34,10 @@ metalenia/
 *.tmp
 __pycache__/
 *.pyc
+tests/
+excitation_tests/
+cluster/
+memory/
 
 # Cluster logs
 cluster/logs/
