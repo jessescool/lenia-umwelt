@@ -1,111 +1,94 @@
-# Lenia RL
+# Agnosiophobia in Lenia
 
-Exploring goal-directedness in Lenia by perturbing creatures and measuring their recovery. Agency is revealed by how a creature responds to intervention: recovery trajectories map attractor basins in the creature's dynamical landscape.
+Code and data for *Agnosiophobia in a Virtual Agent: behavioral and dynamical architecture in Lenia* (ALIFE 2026).
+
+We introduce regions of sensory occlusion into Lenia environments — areas from which no information reaches the creature's kernel — and find that several creatures avoid them, a behavior we term *agnosiophobia*. Targeted occlusions at every pixel reveal morphological sensitivity maps that trace the geometry of each creature's attractor basin. Heading change, the free variable, absorbs the cost of morphological recovery: navigational capacity lives near the boundary of the basin of attraction.
+
+Four creatures are studied: O2u (Orbium), S1s (Scutium), K4s (Quadrupedium), and K6s (Hexapodium).
 
 ## Repository Layout
 
 | Path | Purpose |
 | --- | --- |
-| `substrate/` | Core Lenia primitives: `lenia.py` (Config, Board, Automaton, Lenia, build_kernel), `animals.py` (catalog loader), `simulation.py` (Simulation runner), `scaling.py` (upscale helpers) |
-| `metrics_and_machinery/` | Distance metrics, trajectory metrics, intervention types, reward functions |
+| `substrate/` | Core Lenia primitives: kernel, automaton, simulation runner, upscaling |
+| `metrics_and_machinery/` | Wasserstein-1 distance, trajectory metrics, intervention types |
 | `orbits/` | Orbit pipeline: raw frames → activation profiles → W1 distances → orbit summary |
-| `initializations/` | Pre-settled creature tensors and generation scripts |
-| `environments/` | Barrier environment definitions and generators |
-| `experiments/` | Sweep, competency analysis, figure scripts |
-| `figure_generation/` | ALIFE publication figure scripts |
-| `utils/` | Shared utilities: rotation, augmentation, GPU batched rollouts |
-| `viz/` | Visualization: GIFs, maps, heatmaps, orbit plots |
-| `config.py` | Default constants (grid size, timing, curriculum stages) |
-| `animals.json` | Catalog of Lenia creatures (code, metadata, params, RLE body plan) |
-| `results/` | All output (sweep results, competency data, figures) |
+| `initializations/` | Pre-settled creature tensors and heading calibration |
+| `environments/` | Barrier environment generators (renormalized-kernel occlusion) |
+| `experiments/` | Perturbation sweeps, environment competency, analysis scripts |
+| `figure_generation/` | Publication figure scripts |
+| `utils/` | Rotation, augmentation, GPU-batched rollouts |
+| `viz/` | GIF rendering, sensitivity maps, heatmaps |
+| `config.py` | Shared constants |
+| `animals.json` | Lenia creature catalog (codes, params, RLE body plans) |
 
 ## Setup
 
-Python 3.10+. Install dependencies:
+Python 3.10+.
 ```bash
 pip install torch numpy scipy matplotlib imageio tqdm
 ```
 
 ## Key Concepts
 
-**Orbit**: The set of states a healthy creature visits across rotations and time. Built by running the creature from multiple initial orientations, converting each frame to a sorted activation profile, then computing the barycenter and radius in profile space.
+**Orbit** — The neighborhood of a creature's attractor: a dataset of sorted activation profiles sampled across orientations and time. The barycenter c̄ and radius d_max define the reference against which recovery is measured (Section 2 of the paper).
 
-**Sweep**: Exhaustive grid search that erases a small patch at every pixel position and measures recovery. Uses the orbit to detect when (and whether) the creature returns to its normal attractor.
+**Sweep** — Exhaustive grid search placing a persistent NxN occlusion at every nonzero pixel, measuring frames to recovery, max distortion, and heading change. Produces the sensitivity maps in Figure 4 of the paper.
 
-## How To: Generate an Orbit
+**Environment competency** — Score each creature across barrier environments by orbit residence fraction: the proportion of simulation time the creature remains alive and morphologically intact. Produces Figure 2 of the paper.
 
-The orbit pipeline has four stages, each producing a `.pt` file that feeds the next.
+## Generating Orbits
+
+Four-stage pipeline, each producing a `.pt` file:
 
 ```bash
-# 1. Collect raw frames: rotate creature through 15 orientations, settle, record 64 frames each
+# 1. Raw frames: settle creature at multiple orientations, record frames
 python orbits/orbits.py raw --code O2u --scale 4 --grid 128
-# Output: orbits/O2u/s4/O2u_s4_raw.pt
 
-# 2. Convert frames to sorted activation profiles
+# 2. Sorted activation profiles
 python orbits/orbits.py profile orbits/O2u/s4/O2u_s4_raw.pt
-# Output: orbits/O2u/s4/O2u_s4_profile.pt
 
-# 3. (Optional) Pairwise W1 distance matrix between all profiles
+# 3. Pairwise W1 distance matrix
 python orbits/orbits.py distances orbits/O2u/s4/O2u_s4_profile.pt
-# Output: orbits/O2u/s4/O2u_s4_distances.pt
 
-# 4. Compute orbit summary: barycenter (c_bar), ĉ and σ
+# 4. Orbit summary: barycenter, d_max
 python orbits/orbits.py orbit orbits/O2u/s4/O2u_s4_profile.pt
-# Output: orbits/O2u/s4/O2u_s4_orbit.pt + .json sidecar
 ```
 
-Options for the `raw` subcommand:
-- `--code`, `-c`: Creature code from `animals.json` (required)
-- `--scale`, `-s`: Upscale factor (default: 1)
-- `--grid`, `-g`: Base grid size (default: 64)
-- `--rotations`, `-r`: Number of orientations (default: 15)
-- `--frames`, `-f`: Frames to record per rotation (default: 64)
-- `--warmup-multiplier`, `-w`: Settle time = T * this (default: 30.0)
+## Running Sweeps
 
-## How To: Run a Sweep
-
-A sweep requires an orbit file for the creature at the matching scale. Generate the orbit first (steps 1, 2, 4 above), then:
+Requires an orbit file at the matching scale.
 
 ```bash
-# Basic sweep: size-3 erase, 1 orientation, shortcut mode, cropped output
+# Targeted occlusion sweep (3x3 blind region at every nonzero pixel)
+python experiments/sweep.py --code O2u --grid 128 --scale 4 --size 3 \
+    --intervention-type blind --shortcut --crop --orientations 4
+
+# Erase sweep (zeroing instead of occlusion)
 python experiments/sweep.py --code O2u --grid 128 --scale 4 --size 3 \
     --shortcut --crop --orientations 1
-# Auto output: results/sweep/O2u/O2u_x4/O2u_x4_i3/O2u_x4_i3_o0/
-
-# Multi-orientation sweep
-python experiments/sweep.py --code O2u --grid 128 --scale 4 --size 3 \
-    --shortcut --crop --orientations 4
-
-# Different intervention types
-python experiments/sweep.py --code O2u --grid 128 --size 3 \
-    --intervention-type blind_erase --shortcut --crop --orientations 1
-python experiments/sweep.py --code O2u --grid 128 --size 3 \
-    --intervention-type additive --intensity 0.3 --shortcut --crop --orientations 1
-
-# Use pre-settled initializations (skips warmup)
-python experiments/sweep.py --code O2u --grid 128 --scale 4 --size 3 \
-    --init --shortcut --crop --orientations 1
 ```
 
-Sweep options:
-- `--code`: Creature code (default: O2u)
-- `--grid`: Base grid size (default: 128)
-- `--scale`: Upscale factor (default: 1)
-- `--size`: Intervention size NxN at base resolution (default: 2)
-- `--intervention-type`: `erase`, `blind_erase`, `blind`, or `additive` (default: erase)
-- `--duration`: Steps blind masks are active; `-1` = persistent; omit = default
-- `--intensity`: Intensity for additive intervention (default: 0.3)
-- `--orientations`: Number of rotation orientations (default: 1)
-- `--shortcut`: Only test pixels with non-zero mass (much faster)
-- `--crop`: Crop output maps to creature bounding box
-- `--init`: Use pre-settled initializations from `initializations/`
-- `--recovery-lambda`: Recovery threshold multiplier (default: 1.0; K4s needs 2.0)
-- `--no-gifs`: Skip GIF generation (faster for large grids)
-- `--batch-size`: Override auto-detected GPU batch size
+Output: `results/sweep/{CODE}/{CODE}_x{SCALE}/{CODE}_x{SCALE}_i{SIZE}/{CODE}_x{SCALE}_i{SIZE}_o{ORI}/`
 
-Output naming: `results/sweep/{CODE}/{CODE}_x{SCALE}/{CODE}_x{SCALE}_i{SIZE}/{CODE}_x{SCALE}_i{SIZE}_o{ORI}/`
+## Environment Competency
 
-Sweep outputs (per orientation directory):
-- `analysis/` — per-orientation `.npy` maps (recovery status, centroid displacement, heading, etc.)
-- `*_recovery_status_map.png` — overview figure
-- `slowest_recoveries/`, `never_recovered/`, `death/`, `furthest_centroids/` — top-K side-by-side GIFs
+```bash
+# Score one creature across all barrier environments
+python experiments/run_env_competency.py --code O2u --scale 4
+
+# Score all creatures
+python experiments/env_competency_sweep.py --all --scale 4
+```
+
+Output: `results/env_competency/{CODE}/{CODE}_competency.json`
+
+## Quick Preview
+
+```bash
+python run.py O2u   # saves a 500-frame GIF to results/
+```
+
+## Citation
+
+TBD
