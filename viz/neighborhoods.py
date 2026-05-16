@@ -1,5 +1,5 @@
-# viz/orbits.py — Jesse Cool (jessescool)
-"""Visualize raw orbit datasets as GIFs."""
+# viz/neighborhoods.py — Jesse Cool (jessescool)
+"""Visualize raw neighborhood datasets as GIFs."""
 
 from __future__ import annotations
 
@@ -48,10 +48,10 @@ def _render_stitched_gif(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Render orbit GIFs from saved .pt data")
-    parser.add_argument("input", type=Path, help="Path to orbit .pt file")
+    parser = argparse.ArgumentParser(description="Render neighborhood GIFs from saved .pt data")
+    parser.add_argument("input", type=Path, help="Path to neighborhood .pt file")
     parser.add_argument("--output-dir", "-o", type=Path, default=None,
-                        help="Output directory (default: results/new/orbits/<stem>)")
+                        help="Output directory (default: results/new/neighborhoods/<stem>)")
     parser.add_argument("--angles", type=float, nargs="*", default=None,
                         help="Specific angles to render (default: all)")
     parser.add_argument("--upscale", type=int, default=4,
@@ -72,7 +72,7 @@ def main():
 
     has_warmup = warmup_frames is not None and not args.no_warmup
 
-    out_dir = args.output_dir or Path(f"results/new/orbits/{args.input.stem}")
+    out_dir = args.output_dir or Path(f"results/new/neighborhoods/{args.input.stem}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Filter to requested angles

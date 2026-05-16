@@ -22,11 +22,11 @@ DEATH_THRESH = 0.01
 
 
 def load_d_max(code: str, scale: int, input_dir: Path) -> float:
-    orbit_path = Path(f"orbits/{code}/s{scale}/{code}_s{scale}_orbit.pt")
-    if not orbit_path.exists():
+    neighborhood_path = Path(f"neighborhoods/{code}/s{scale}/{code}_s{scale}_neighborhood.pt")
+    if not neighborhood_path.exists():
         return None
-    orbit = torch.load(orbit_path, weights_only=False)
-    return float(orbit["d_max"])
+    neighborhood = torch.load(neighborhood_path, weights_only=False)
+    return float(neighborhood["d_max"])
 
 
 def load_all(input_dir: Path, codes: list[str] | None = None,
@@ -61,7 +61,7 @@ def load_all(input_dir: Path, codes: list[str] | None = None,
 
         d_max = load_d_max(code, scale, input_dir)
         if d_max is None:
-            print(f"  {code}: no orbit file, skipping")
+            print(f"  {code}: no neighborhood file, skipping")
             continue
 
         env_names = list(cen['env_names'])
@@ -176,7 +176,7 @@ def make_range_plot(data, envs, codes, save_path, lam):
     ax.set_yticks(env_centers)
     ax.set_yticklabels(envs_sorted, fontsize=10)
     ax.set_xticks([0, 25, 50, 75, 100])
-    ax.set_xlabel(f'% of simulation within {lam}$\\times$d_max of orbit', fontsize=10)
+    ax.set_xlabel(f'% of simulation within {lam}$\\times$d_max of neighborhood', fontsize=10)
     ax.grid(axis='x', alpha=0.15)
     # separators between environment groups
     for j in range(1, n_envs):

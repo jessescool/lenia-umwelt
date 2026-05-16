@@ -390,6 +390,7 @@ ENVIRONMENTS = {
     "corridor": make_corridor,
     "funnel": make_funnel,
     "noise": lambda s, d, t, scale_factor=1.0: make_noise(s, d, t, density=0.30, seed=271, scale_factor=scale_factor),
+    "empty": lambda s, d, t, scale_factor=1.0: torch.zeros(s, device=d, dtype=t),
 }
 
 

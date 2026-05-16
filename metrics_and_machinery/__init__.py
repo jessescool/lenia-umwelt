@@ -37,7 +37,7 @@ from metrics_and_machinery.interventions import (
 )
 
 from metrics_and_machinery.competency import (
-    orbit_residence_fraction,
+    neighborhood_residence_fraction,
     aggregate_competency,
 )
 
@@ -76,5 +76,5 @@ __all__ = [
     "compute_damage", "compute_detection_frame", "compute_timing_windows",
     "WARMUP_MULTIPLIER", "WINDOW_MULTIPLIER", "MIN_WARMUP_STEPS", "MIN_WINDOW_STEPS",
     "MetricFn", "DEFAULT_DISTANCE",
-    "orbit_residence_fraction", "aggregate_competency",
+    "neighborhood_residence_fraction", "aggregate_competency",
 ]

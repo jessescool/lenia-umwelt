@@ -420,7 +420,7 @@ def make_competency_heatmap_with_marginals(data, envs, codes, save_path):
 
     # ── colorbar ──
     cb = fig.colorbar(im, cax=ax_cb)
-    cb.set_label('last return to orbit (% of run)', fontsize=9)
+    cb.set_label('last return to neighborhood (% of run)', fontsize=9)
 
     # ── title ──
     fig.suptitle('Competency by creature × environment',
@@ -521,7 +521,7 @@ def main():
                     lr_std_pct[i, j] = lr.std() / ts * 100
 
         make_heatmap(lr_pct, envs, codes,
-                     'Last return to orbit (% of run)',
+                     'Last return to neighborhood (% of run)',
                      output_dir / 'heatmap_last_return.png',
                      cmap='RdYlGn', vmin=0, vmax=100, fmt='.0f', pct=True)
         make_heatmap(lr_std_pct, envs, codes,
@@ -559,7 +559,7 @@ def main():
             d = data[code]
             if 'last_return' in d:
                 make_polar_plots(data, 'last_return', envs, [code], output_dir,
-                                 'Last return to orbit (step)',
+                                 'Last return to neighborhood (step)',
                                  ylim=d['total_steps'])
         print()
 

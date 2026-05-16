@@ -103,7 +103,7 @@ def run_single_env_from_init(env_name, code, base_grid, scale, steps,
         frames = sim.run(steps)
 
         gif_path = output_dir / f"{code}_{env_name}__o{sit_idx}.gif"
-        write_gif(frames, gif_path, fps=30, upscale=2, barrier_mask=mask)
+        write_gif(frames, gif_path, fps=30, upscale=2, barrier_mask=mask, colormap="magma_r", barrier_color=(0, 0, 0), bg_white=True, top_color=(38, 20, 55))
         print(f"  {gif_path.name}")
 
 
@@ -157,7 +157,7 @@ def run_single_env(env_name, code, base_grid, scale, steps, output_dir, animal,
         frames = sim.run(steps)
 
         gif_path = output_dir / f"{code}_{env_name}__rot{rot_deg}.gif"
-        write_gif(frames, gif_path, fps=30, upscale=2, barrier_mask=mask)
+        write_gif(frames, gif_path, fps=30, upscale=2, barrier_mask=mask, colormap="magma_r", barrier_color=(0, 0, 0), bg_white=True, top_color=(38, 20, 55))
         print(f"  {gif_path.name}")
 
 

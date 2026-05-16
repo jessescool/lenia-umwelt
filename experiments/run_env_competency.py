@@ -17,7 +17,7 @@ from substrate import Simulation, Config, load_animals
 from substrate.lenia import _auto_device
 from environments import ENVIRONMENTS, load_env
 from metrics_and_machinery.distance_metrics import prepare_profile
-from metrics_and_machinery.competency import orbit_residence_fraction, aggregate_competency
+from metrics_and_machinery.competency import neighborhood_residence_fraction, aggregate_competency
 from viz.gif import write_gif
 
 
@@ -64,14 +64,14 @@ def get_spawn_position(grid_h, grid_w, ph, pw):
     return (grid_h // 2 - ph // 2, grid_w // 2 - pw // 2)
 
 
-# ── orbit / initialization loaders ─────────────────────────────────────
+# ── neighborhood / initialization loaders ─────────────────────────────────────
 
-def load_orbit_data(code: str, scale: int) -> dict:
-    """Load orbit summary (c_bar, d_max, m)."""
-    orbit_path = Path(f"orbits/{code}/s{scale}/{code}_s{scale}_orbit.pt")
-    if not orbit_path.exists():
-        raise FileNotFoundError(f"Orbit file not found: {orbit_path}")
-    return torch.load(orbit_path, weights_only=False)
+def load_neighborhood_data(code: str, scale: int) -> dict:
+    """Load neighborhood summary (c_bar, d_max, m)."""
+    neighborhood_path = Path(f"neighborhoods/{code}/s{scale}/{code}_s{scale}_neighborhood.pt")
+    if not neighborhood_path.exists():
+        raise FileNotFoundError(f"Neighborhood file not found: {neighborhood_path}")
+    return torch.load(neighborhood_path, weights_only=False)
 
 
 def load_initializations(code: str, scale: int, num_orientations: int | None = None) -> list[dict]:
@@ -118,7 +118,7 @@ def run_one(
     base_grid: tuple[int, int],
     scale: int,
     init_dict: dict,
-    orbit_data: dict,
+    neighborhood_data: dict,
     lam: float,
     device: torch.device,
     gif_path: Path | None = None,
@@ -136,10 +136,10 @@ def run_one(
     metric_stride = max(1, steps // 1000)
     n_metric_frames = (steps + metric_stride - 1) // metric_stride
 
-    # orbit parameters
-    c_bar = orbit_data['c_bar'].to(device)
-    m = orbit_data['m']
-    d_max = orbit_data['d_max']
+    # neighborhood parameters
+    c_bar = neighborhood_data['c_bar'].to(device)
+    m = neighborhood_data['m']
+    d_max = neighborhood_data['d_max']
     competency_threshold = COMPETENCY_LAMBDA_MULT * lam * d_max
 
     pattern = extract_pattern(init_dict['tensor'])
@@ -180,7 +180,7 @@ def run_one(
     _sin_c, _cos_c = torch.sin(_col_angles), torch.cos(_col_angles)
     _TWO_PI = 2 * np.pi
 
-    # last step where creature was within 1*d_max of orbit
+    # last step where creature was within 1*d_max of neighborhood
     last_return_step = 0
 
     # GIF frames: target ~500 max
@@ -235,7 +235,7 @@ def run_one(
 
                 metric_idx += 1
 
-                # track last return to orbit (within 1 * d_max)
+                # track last return to neighborhood (within 1 * d_max)
                 if dist.item() <= d_max:
                     last_return_step = step
 
@@ -260,7 +260,7 @@ def run_one(
     mass_ts = mass_ts[:metric_idx].unsqueeze(0)
     initial_mass_t = mass_ts[:, 0]
 
-    result = orbit_residence_fraction(
+    result = neighborhood_residence_fraction(
         distances, mass_ts,
         competency_threshold=competency_threshold,
         death_threshold=DEATH_THRESHOLD,
@@ -300,7 +300,7 @@ def run_batch(
     base_grid: tuple[int, int],
     scale: int,
     init_dicts: list[dict],
-    orbit_data: dict,
+    neighborhood_data: dict,
     lam: float,
     device: torch.device,
     gif_ori_indices: set,
@@ -322,10 +322,10 @@ def run_batch(
     metric_stride = max(1, steps // 1000)
     n_metric_frames = (steps + metric_stride - 1) // metric_stride
 
-    # orbit parameters
-    c_bar = orbit_data['c_bar'].to(device)   # [m]
-    m = orbit_data['m']
-    d_max = orbit_data['d_max']
+    # neighborhood parameters
+    c_bar = neighborhood_data['c_bar'].to(device)   # [m]
+    m = neighborhood_data['m']
+    d_max = neighborhood_data['d_max']
     competency_threshold = COMPETENCY_LAMBDA_MULT * lam * d_max
 
     # ── build [B, H, W] state tensor ────────────────────────────
@@ -390,7 +390,7 @@ def run_batch(
     with torch.no_grad():
         for step in range(steps):
             if step % metric_stride == 0 and metric_idx < n_metric_frames:
-                # distance to orbit: [B, m] → [B]
+                # distance to neighborhood: [B, m] → [B]
                 profiles = prepare_profile(states, m)
                 dists = (profiles - c_bar.unsqueeze(0)).abs().mean(dim=1)
                 distances_all[:, metric_idx] = dists
@@ -479,10 +479,10 @@ def run_batch(
             write_gif(gif_frames[li], env_subdir / f"{code}_{env_name}_{hdeg}deg.gif",
                       fps=30, barrier_mask=barrier)
 
-    # ── competency via orbit_residence_fraction [B, T_m] ────────
+    # ── competency via neighborhood_residence_fraction [B, T_m] ────────
     d_trim = distances_all[:, :metric_idx]
     m_trim = mass_all[:, :metric_idx]
-    result = orbit_residence_fraction(
+    result = neighborhood_residence_fraction(
         d_trim, m_trim,
         competency_threshold=competency_threshold,
         death_threshold=DEATH_THRESHOLD,
@@ -565,13 +565,13 @@ def main():
     animal = animals[0]
     T = animal.params.get("T", 10)
 
-    # load orbit + initializations
-    orbit_data = load_orbit_data(code, args.scale)
+    # load neighborhood + initializations
+    neighborhood_data = load_neighborhood_data(code, args.scale)
     inits = load_initializations(code, args.scale, num_orientations=args.num_orientations)
 
-    d_max = orbit_data['d_max']
-    c_hat = orbit_data['c_hat']
-    m = orbit_data['m']
+    d_max = neighborhood_data['d_max']
+    c_hat = neighborhood_data['c_hat']
+    m = neighborhood_data['m']
     competency_threshold = COMPETENCY_LAMBDA_MULT * args.lam * d_max
 
     if verbose:
@@ -580,7 +580,7 @@ def main():
         print(f"{'='*60}")
         print(f"  Scale: {args.scale}, Grid: {base_grid[0]*args.scale}x{base_grid[1]*args.scale}")
         print(f"  T={T}, steps={int(N_PERIODS * T)} ({N_PERIODS} T-periods, early stop on death/explosion)")
-        print(f"  Orbit: m={m}, d_max={d_max:.6f}, c_hat={c_hat:.6f}")
+        print(f"  Neighborhood: m={m}, d_max={d_max:.6f}, c_hat={c_hat:.6f}")
         print(f"  Threshold: {COMPETENCY_LAMBDA_MULT}*{args.lam}*d_max = {competency_threshold:.6f}")
         print(f"  Orientations: {len(inits)}, batch_size: {batch_size}")
         print(f"  Environments: {', '.join(env_names)}")
@@ -631,7 +631,7 @@ def main():
             chunk = inits[chunk_start:chunk_start + batch_size]
             chunk_results = run_batch(
                 code, animal, env_name, base_grid, args.scale,
-                chunk, orbit_data, args.lam, device,
+                chunk, neighborhood_data, args.lam, device,
                 gif_ori_indices=gif_ori_indices,
                 chunk_offset=chunk_start,
                 out_dir=out_dir,

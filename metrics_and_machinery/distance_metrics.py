@@ -176,7 +176,7 @@ def batched_frame_distances(
     return wasserstein_1d_torch_nonzero(stacked_a, stacked_b, threshold=threshold)
 
 
-def time_to_orbit_recovery_batched(
+def time_to_neighborhood_recovery_batched(
     test_frames: torch.Tensor,
     c_bar: torch.Tensor,
     m: int,
@@ -185,7 +185,7 @@ def time_to_orbit_recovery_batched(
     death_threshold: float = 0.01,
     warmup_frames: int = 0,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-    """Batched orbit-based recovery: is profile distance within orbit threshold?
+    """Batched neighborhood-based recovery: is profile distance within neighborhood threshold?
 
     Recovery = d(profile(x), c_bar) < recovery_threshold for stability_window
     consecutive frames. Returns (recovery_times [B], outcomes [B], distances [B,T]).

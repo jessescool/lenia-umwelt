@@ -112,8 +112,8 @@ def rollout_online_metrics(
     automaton: Automaton,
     n_steps: int,
     *,
-    orbit_c_bar: torch.Tensor,
-    orbit_m: int,
+    neighborhood_c_bar: torch.Tensor,
+    neighborhood_m: int,
     blind_masks: torch.Tensor | None = None,
     blind_duration: int | None = None,
 ) -> dict:
@@ -145,8 +145,8 @@ def rollout_online_metrics(
         precomputed_vis_weight = irfft2(vis_fft, s=(H, W))
         del visible, vis_fft
 
-    # Move orbit barycenter to device once
-    c_bar_dev = orbit_c_bar.to(device)
+    # Move neighborhood barycenter to device once
+    c_bar_dev = neighborhood_c_bar.to(device)
 
     # Pre-allocate all outputs on GPU -- single bulk .cpu() after the loop
     distances = torch.empty(B, n_steps, device=device, dtype=dtype)
@@ -158,7 +158,7 @@ def rollout_online_metrics(
         # Compute per-frame metrics BEFORE stepping (frame t = state before step t)
 
         # Profile distance: test sims only -> [B, m] profiles -> L1 to c_bar
-        profiles = prepare_profile(current[:B], orbit_m)  # [B, m]
+        profiles = prepare_profile(current[:B], neighborhood_m)  # [B, m]
         distances[:, step] = (profiles - c_bar_dev).abs().mean(dim=1)
 
         # Centroids: all B+1 sims -> [B+1, 2]

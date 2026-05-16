@@ -1,5 +1,5 @@
 # experiments/env_competency_sweep.py — Jesse Cool (jessescool)
-"""Measure orbit residence across barrier environments."""
+"""Measure neighborhood residence across barrier environments."""
 
 import argparse
 import json
@@ -17,7 +17,7 @@ from substrate.lenia import _auto_device
 from environments import ENVIRONMENTS, load_env
 from experiments.run_env_batch import extract_pattern, get_spawn_position, parse_grid
 from metrics_and_machinery.distance_metrics import prepare_profile
-from metrics_and_machinery.competency import orbit_residence_fraction, aggregate_competency
+from metrics_and_machinery.competency import neighborhood_residence_fraction, aggregate_competency
 from viz.gif import write_gif
 
 
@@ -39,12 +39,12 @@ N_PERIODS = 60
 MIN_STEPS = 600
 
 
-def load_orbit_data(code: str, scale: int) -> dict:
-    """Load orbit summary (c_bar, d_max, m)."""
-    orbit_path = Path(f"orbits/{code}/s{scale}/{code}_s{scale}_orbit.pt")
-    if not orbit_path.exists():
-        raise FileNotFoundError(f"Orbit file not found: {orbit_path}")
-    return torch.load(orbit_path, weights_only=False)
+def load_neighborhood_data(code: str, scale: int) -> dict:
+    """Load neighborhood summary (c_bar, d_max, m)."""
+    neighborhood_path = Path(f"neighborhoods/{code}/s{scale}/{code}_s{scale}_neighborhood.pt")
+    if not neighborhood_path.exists():
+        raise FileNotFoundError(f"Neighborhood file not found: {neighborhood_path}")
+    return torch.load(neighborhood_path, weights_only=False)
 
 
 def load_initializations(code: str, scale: int) -> list[dict]:
@@ -63,7 +63,7 @@ def run_one(
     base_grid: tuple[int, int],
     scale: int,
     init_dict: dict,
-    orbit_data: dict,
+    neighborhood_data: dict,
     lam: float,
     device: torch.device,
     verbose: bool = True,
@@ -85,10 +85,10 @@ def run_one(
     metric_stride = max(1, steps // 1000)
     n_metric_frames = (steps + metric_stride - 1) // metric_stride
 
-    # Orbit parameters
-    c_bar = orbit_data['c_bar'].to(device)
-    m = orbit_data['m']
-    d_max = orbit_data['d_max']
+    # Neighborhood parameters
+    c_bar = neighborhood_data['c_bar'].to(device)
+    m = neighborhood_data['m']
+    d_max = neighborhood_data['d_max']
     competency_threshold = COMPETENCY_LAMBDA_MULT * lam * d_max
 
     pattern = extract_pattern(init_dict['tensor'])
@@ -172,7 +172,7 @@ def run_one(
     initial_mass = mass_ts[:, 0]  # [1]
 
     # Compute competency metrics
-    result = orbit_residence_fraction(
+    result = neighborhood_residence_fraction(
         distances, mass_ts,
         competency_threshold=competency_threshold,
         death_threshold=0.01,
@@ -217,13 +217,13 @@ def run_creature(
     animal = animals[0]
     T = animal.params.get("T", 10)
 
-    # Load orbit and initializations
-    orbit_data = load_orbit_data(code, scale)
+    # Load neighborhood and initializations
+    neighborhood_data = load_neighborhood_data(code, scale)
     inits = load_initializations(code, scale)
 
-    d_max = orbit_data['d_max']
-    c_hat = orbit_data['c_hat']
-    m = orbit_data['m']
+    d_max = neighborhood_data['d_max']
+    c_hat = neighborhood_data['c_hat']
+    m = neighborhood_data['m']
     competency_threshold = COMPETENCY_LAMBDA_MULT * lam * d_max
 
     steps = max(MIN_STEPS, int(N_PERIODS * T))
@@ -234,7 +234,7 @@ def run_creature(
         print(f"{'='*60}")
         print(f"  Scale: {scale}, Grid: {base_grid[0]*scale}x{base_grid[1]*scale}")
         print(f"  T={T}, steps={steps} ({steps/T:.0f} T-periods)")
-        print(f"  Orbit: m={m}, d_max={d_max:.6f}, c_hat={c_hat:.6f}")
+        print(f"  Neighborhood: m={m}, d_max={d_max:.6f}, c_hat={c_hat:.6f}")
         print(f"  Competency threshold: {COMPETENCY_LAMBDA_MULT}*{lam}*d_max = {competency_threshold:.6f}")
         print(f"  Orientations: {len(inits)}")
         print(f"  Environments: {', '.join(env_names)}")
@@ -268,7 +268,7 @@ def run_creature(
 
             metrics = run_one(
                 code, animal, env_name, base_grid, scale,
-                init_dict, orbit_data, lam, device, verbose=False,
+                init_dict, neighborhood_data, lam, device, verbose=False,
                 gif_path=gif_path,
             )
             M_list.append(metrics['M'])

@@ -174,7 +174,7 @@ def sweep(
     timescale_T: float = 10.0,
     recovery_threshold: float = 0.002201,
     shortcut: bool = False,
-    orbit_data: dict = None,
+    neighborhood_data: dict = None,
     blind_duration: int | None = None,
 ) -> GridSearchResult:
     """
@@ -252,8 +252,8 @@ def sweep(
             ctrl_state=initial_state,
             automaton=automaton,
             n_steps=total_steps,
-            orbit_c_bar=orbit_data['c_bar'],
-            orbit_m=orbit_data['m'],
+            neighborhood_c_bar=neighborhood_data['c_bar'],
+            neighborhood_m=neighborhood_data['m'],
             blind_duration=blind_duration,
         )
         try:
@@ -499,16 +499,16 @@ def _generate_top_k_gifs(
     print(f"  Saved {len(ranked)} GIFs to {gifs_dir}/")
 
 
-def _load_orbit_data(code: str, scale: int) -> dict:
-    """Load orbit summary data for a creature at the given scale."""
-    orbit_path = Path(f"orbits/{code}/s{scale}/{code}_s{scale}_orbit.pt")
-    if not orbit_path.exists():
+def _load_neighborhood_data(code: str, scale: int) -> dict:
+    """Load neighborhood summary data for a creature at the given scale."""
+    neighborhood_path = Path(f"neighborhoods/{code}/s{scale}/{code}_s{scale}_neighborhood.pt")
+    if not neighborhood_path.exists():
         raise FileNotFoundError(
-            f"Orbit file not found: {orbit_path}\n"
-            f"Run:  python orbits/orbits.py orbit ..."
+            f"Neighborhood file not found: {neighborhood_path}\n"
+            f"Run:  python neighborhoods/neighborhoods.py neighborhood ..."
         )
-    orbit_data = torch.load(orbit_path, weights_only=False)
-    return orbit_data
+    neighborhood_data = torch.load(neighborhood_path, weights_only=False)
+    return neighborhood_data
 
 
 def main():
@@ -544,7 +544,7 @@ def main():
                         help="How many steps blind masks are active. "
                              "-1 = persistent (all steps). Omit = use intervention default.")
     parser.add_argument("--recovery-lambda", type=float, default=1.0,
-                        help="Multiplier on orbit d_max for recovery threshold (default: 1.0)")
+                        help="Multiplier on neighborhood d_max for recovery threshold (default: 1.0)")
 
     args = parser.parse_args()
     verbose = not args.quiet
@@ -584,8 +584,8 @@ def main():
     else:
         batch_size = estimate_batch_size(actual_grid, warmup + window, lenia_cfg.device, online=True)
 
-    orbit_data = _load_orbit_data(args.code, args.scale)
-    recovery_threshold = orbit_data['d_max'] * args.recovery_lambda
+    neighborhood_data = _load_neighborhood_data(args.code, args.scale)
+    recovery_threshold = neighborhood_data['d_max'] * args.recovery_lambda
 
     intervention = make_intervention(args.intervention_type, actual_size, intensity=args.intensity)
 
@@ -617,9 +617,9 @@ def main():
         print(f"Grid: {H}x{W} = {H*W} positions" + (" (shortcut: non-zero only)" if args.shortcut else ""))
         print(f"Intervention: {actual_size}x{actual_size} {args.intervention_type}")
         print(f"Timing: warmup={warmup}, window={window}")
-        d_max = orbit_data['d_max']
-        m = orbit_data['m']
-        print(f"Recovery: orbit-based (m={m}, d_max={d_max:.6f})")
+        d_max = neighborhood_data['d_max']
+        m = neighborhood_data['m']
+        print(f"Recovery: neighborhood-based (m={m}, d_max={d_max:.6f})")
         print(f"Init: {args.init} (orientation {sit_idx}, {sit_angle:.1f}°)")
         print(f"Batch size: {batch_size}")
         print(f"Device: {lenia_cfg.device}")
@@ -640,7 +640,7 @@ def main():
         timescale_T=lenia_cfg.timescale_T,
         recovery_threshold=recovery_threshold,
         shortcut=args.shortcut,
-        orbit_data=orbit_data,
+        neighborhood_data=neighborhood_data,
         blind_duration=blind_duration,
     )
 

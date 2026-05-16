@@ -38,9 +38,9 @@ def load_data(code: str, env_name: str):
 
 
 def load_d_max(code: str, scale: int = 4) -> float:
-    orbit = torch.load(f"orbits/{code}/s{scale}/{code}_s{scale}_orbit.pt",
+    neighborhood = torch.load(f"neighborhoods/{code}/s{scale}/{code}_s{scale}_neighborhood.pt",
                         weights_only=False)
-    return float(orbit["d_max"])
+    return float(neighborhood["d_max"])
 
 
 def get_env_mask(env_name: str, H: int, W: int) -> np.ndarray:

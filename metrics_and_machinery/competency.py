@@ -1,12 +1,12 @@
 # metrics_and_machinery/competency.py — Jesse Cool (jessescool)
 """Competency scoring for environment testing.
 
-Orbit Residence Fraction (M): fraction of the experiment the creature spent
-alive AND morphologically intact (within its orbit).
+Neighborhood Residence Fraction (M): fraction of the experiment the creature spent
+alive AND morphologically intact (within its neighborhood).
 
 M = V * F where:
   V (viability)  = frames alive / total frames
-  F (fidelity)   = frames in-orbit / frames alive
+  F (fidelity)   = frames in-neighborhood / frames alive
   sigma_M        = std(M) across orientations
   D_peak         = max profile distance / d_max
 """
@@ -14,7 +14,7 @@ M = V * F where:
 import torch
 
 
-def orbit_residence_fraction(
+def neighborhood_residence_fraction(
     distances: torch.Tensor,
     mass: torch.Tensor,
     competency_threshold: float,
@@ -40,21 +40,21 @@ def orbit_residence_fraction(
     not_alive_propagated = not_alive.cummax(dim=1).values
     alive = ~not_alive_propagated
 
-    in_orbit = distances < competency_threshold  # [B, T] bool
+    in_neighborhood = distances < competency_threshold  # [B, T] bool
 
     alive_float = alive.float()
-    in_orbit_float = in_orbit.float()
+    in_neighborhood_float = in_neighborhood.float()
 
     # V = fraction of frames alive
     V = alive_float.mean(dim=1)  # [B]
 
-    # F = fraction of alive frames that are in-orbit
+    # F = fraction of alive frames that are in-neighborhood
     alive_count = alive_float.sum(dim=1)  # [B]
-    in_orbit_and_alive = (alive & in_orbit).float().sum(dim=1)  # [B]
-    F = torch.where(alive_count > 0, in_orbit_and_alive / alive_count, torch.zeros_like(V))
+    in_neighborhood_and_alive = (alive & in_neighborhood).float().sum(dim=1)  # [B]
+    F = torch.where(alive_count > 0, in_neighborhood_and_alive / alive_count, torch.zeros_like(V))
 
-    # M = V * F = (alive AND in_orbit) / total frames
-    M = (alive & in_orbit).float().mean(dim=1)
+    # M = V * F = (alive AND in_neighborhood) / total frames
+    M = (alive & in_neighborhood).float().mean(dim=1)
 
     # D_peak: max distance reached (in d_max units), only for alive frames
     # Set dead-frame distances to 0 so they don't dominate

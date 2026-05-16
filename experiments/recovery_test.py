@@ -50,7 +50,7 @@ def compute_profile_distances(
 def run_recovery_test(
     creature,
     lenia_cfg: Config,
-    orbit_data: dict,
+    neighborhood_data: dict,
     intervention_type: str = "erase",
     intervention_size: int = 2,
     intensity: float = 0.3,
@@ -65,12 +65,12 @@ def run_recovery_test(
     T_creature = lenia_cfg.timescale_T
     scale = lenia_cfg.scale
 
-    # Orbit data
-    c_bar = orbit_data["c_bar"]            # (m,)
-    c_hat = orbit_data["c_hat"]            # float
-    sigma = orbit_data["sigma"]            # float
+    # Neighborhood data
+    c_bar = neighborhood_data["c_bar"]            # (m,)
+    c_hat = neighborhood_data["c_hat"]            # float
+    sigma = neighborhood_data["sigma"]            # float
     recovery_threshold = c_hat + 3 * sigma
-    m = orbit_data["m"]                    # int
+    m = neighborhood_data["m"]                    # int
 
     # Timing
     window = int(window_mult * T_creature)
@@ -80,7 +80,7 @@ def run_recovery_test(
 
     if verbose:
         print(f"Grid: {H}x{W}, scale={scale}")
-        print(f"Orbit: m={m}, ĉ={c_hat:.6f}, σ={sigma:.6f}, threshold=ĉ+2σ={recovery_threshold:.6f}")
+        print(f"Neighborhood: m={m}, ĉ={c_hat:.6f}, σ={sigma:.6f}, threshold=ĉ+2σ={recovery_threshold:.6f}")
         print(f"Intervention: {intervention_size}x{intervention_size} {intervention_type}")
         print(f"Rollout: {window} steps ({window_mult}*T={T_creature})")
         print(f"Batch size: {batch_size}")
@@ -221,7 +221,7 @@ def run_recovery_test(
     DEATH_THRESHOLD = 0.01
     final_mass = masses[:, -1]
     died = final_mass < DEATH_THRESHOLD
-    # Recovered: alive AND final distance within orbit radius ĉ
+    # Recovered: alive AND final distance within neighborhood radius ĉ
     alive = ~died
     recovered = alive & (distances[:, -1] < c_hat)
     never = alive & ~recovered
@@ -245,7 +245,7 @@ def run_recovery_test(
             print(f"  Recovered mean final d: {distances[recovered, -1].mean():.6f}")
         if n_never > 0:
             print(f"  Never mean final d:     {distances[never, -1].mean():.6f}")
-        print(f"  Orbit band:     ĉ={c_hat:.6f} ± σ={sigma:.6f}")
+        print(f"  Neighborhood band:     ĉ={c_hat:.6f} ± σ={sigma:.6f}")
 
     return {
         "distances": distances,                       # [N, T]
@@ -302,7 +302,7 @@ CROSSING_SKIP = 5   # ignore first N plot-frames when detecting mean crossing
 
 
 def plot_recovery(results: dict, output_dir: Path):
-    """Plot d(x, c̄) timeseries: mean + envelope, orbit band."""
+    """Plot d(x, c̄) timeseries: mean + envelope, neighborhood band."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -410,10 +410,10 @@ def plot_recovery(results: dict, output_dir: Path):
     ax.plot(timesteps, ctrl_smooth, color="green", linewidth=1.5, linestyle="--",
             label="control (unperturbed)")
 
-    # Orbit band: 0 → ĉ+2σ (recovery threshold)
+    # Neighborhood band: 0 → ĉ+2σ (recovery threshold)
     ax.axhline(c_hat, color="orange", linewidth=1.5, linestyle="-", label=f"ĉ = {c_hat:.5f}")
     ax.axhspan(0, recovery_threshold, alpha=0.15, color="orange",
-               label=f"orbit (0 → ĉ+2σ={recovery_threshold:.5f})")
+               label=f"neighborhood (0 → ĉ+2σ={recovery_threshold:.5f})")
 
     # Baseline
     ax.axhline(results["baseline_dist"], color="gray", linewidth=1, linestyle=":",
@@ -439,7 +439,7 @@ def plot_recovery(results: dict, output_dir: Path):
     fig.savefig(output_dir / "recovery_timeseries.png", dpi=150)
     plt.close(fig)
 
-    # Also plot a zoomed version focusing on the orbit band region
+    # Also plot a zoomed version focusing on the neighborhood band region
     fig2, ax2 = plt.subplots(figsize=(10, 5))
 
     for i in indices:
@@ -452,11 +452,11 @@ def plot_recovery(results: dict, output_dir: Path):
              label="control")
     ax2.axhline(c_hat, color="orange", linewidth=1.5, label=f"ĉ = {c_hat:.5f}")
     ax2.axhspan(0, recovery_threshold, alpha=0.15, color="orange",
-                label=f"orbit (0 → ĉ+2σ={recovery_threshold:.5f})")
+                label=f"neighborhood (0 → ĉ+2σ={recovery_threshold:.5f})")
     ax2.axhline(results["baseline_dist"], color="gray", linewidth=1, linestyle=":",
                 label=f"baseline d = {results['baseline_dist']:.5f}")
 
-    # Zoom to ~3x orbit band
+    # Zoom to ~3x neighborhood band
     y_top = max(recovery_threshold * 3, mean_d[:min(T_plot, 30)].max() * 1.2)
     ax2.set_ylim(0, y_top)
     ax2.set_xlabel("Timestep")
@@ -480,8 +480,8 @@ def main():
     parser.add_argument("--code", default="O2u", help="Animal code (default: O2u)")
     parser.add_argument("--scale", type=int, default=2, help="Scale factor (default: 2)")
     parser.add_argument("--grid", type=int, default=64, help="Base grid size (default: 64)")
-    parser.add_argument("--orbit", type=Path, required=True,
-                        help="Path to orbit .pt file (e.g., orbits/O2u/s2/O2u_s2_orbit.pt)")
+    parser.add_argument("--neighborhood", type=Path, required=True,
+                        help="Path to neighborhood .pt file (e.g., neighborhoods/O2u/s2/O2u_s2_neighborhood.pt)")
     parser.add_argument("--output-dir", type=Path, default=None,
                         help="Output directory (default: results/recovery_test/<code>_s<scale>)")
     parser.add_argument("--intervention-type", choices=["erase", "blind_erase", "additive"],
@@ -518,10 +518,10 @@ def main():
         cells = torch.as_tensor(creature.cells, device=device, dtype=torch.float32)
         creature.cells = rotate_tensor(cells, args.rotation, device).cpu().numpy()
 
-    # Load orbit data
-    if not args.orbit.exists():
-        raise SystemExit(f"Orbit file not found: {args.orbit}")
-    orbit_data = torch.load(args.orbit, weights_only=False)
+    # Load neighborhood data
+    if not args.neighborhood.exists():
+        raise SystemExit(f"Neighborhood file not found: {args.neighborhood}")
+    neighborhood_data = torch.load(args.neighborhood, weights_only=False)
 
     # Config
     lenia_cfg = Config.from_animal(creature, base_grid=args.grid, scale=args.scale)
@@ -553,7 +553,7 @@ def main():
     t0 = time.time()
 
     results = run_recovery_test(
-        creature, lenia_cfg, orbit_data,
+        creature, lenia_cfg, neighborhood_data,
         intervention_type=args.intervention_type,
         intervention_size=actual_size,
         intensity=args.intensity,

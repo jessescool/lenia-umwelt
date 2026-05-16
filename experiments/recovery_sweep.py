@@ -156,8 +156,8 @@ def main():
     parser.add_argument("--code", default="O2u", help="Animal code (default: O2u)")
     parser.add_argument("--scale", type=int, default=2, help="Scale factor (default: 2)")
     parser.add_argument("--grid", type=int, default=64, help="Base grid size (default: 64)")
-    parser.add_argument("--orbit", type=Path, required=True,
-                        help="Path to orbit .pt file")
+    parser.add_argument("--neighborhood", type=Path, required=True,
+                        help="Path to neighborhood .pt file")
     parser.add_argument("--output-dir", type=Path, default=None,
                         help="Output directory (default: results/recovery_sweep/<code>_s<scale>)")
     parser.add_argument("--intervention-type", choices=["erase", "blind_erase", "additive"],
@@ -185,10 +185,10 @@ def main():
         raise SystemExit(f"No animal found with code '{args.code}'")
     creature_base = creatures[0]
 
-    # Load orbit data once
-    if not args.orbit.exists():
-        raise SystemExit(f"Orbit file not found: {args.orbit}")
-    orbit_data = torch.load(args.orbit, weights_only=False)
+    # Load neighborhood data once
+    if not args.neighborhood.exists():
+        raise SystemExit(f"Neighborhood file not found: {args.neighborhood}")
+    neighborhood_data = torch.load(args.neighborhood, weights_only=False)
 
     # Config from base creature (orientation doesn't change config)
     lenia_cfg = Config.from_animal(creature_base, base_grid=args.grid, scale=args.scale)
@@ -219,7 +219,7 @@ def main():
         print(f"RECOVERY SWEEP: {creature_base.name} ({creature_base.code})")
         print(f"  {n_angles} orientations, step={args.angle_step}deg")
         print(f"  grid={args.grid}, scale={args.scale}, batch={batch_size}")
-        print(f"  orbit: {args.orbit}")
+        print(f"  neighborhood: {args.neighborhood}")
         print(f"  output: {output_dir}")
         print(f"{'='*60}\n")
 
@@ -257,7 +257,7 @@ def main():
             creature.cells = rotate_tensor(cells, float(angle), device).cpu().numpy()
 
         results = run_recovery_test(
-            creature, lenia_cfg, orbit_data,
+            creature, lenia_cfg, neighborhood_data,
             intervention_type=args.intervention_type,
             intervention_size=actual_size,
             intensity=args.intensity,
@@ -327,9 +327,9 @@ def main():
     sweep_data["scale"] = args.scale
     sweep_data["grid"] = args.grid
     sweep_data["angle_step"] = args.angle_step
-    sweep_data["c_hat"] = float(orbit_data["c_hat"])
-    sweep_data["sigma"] = float(orbit_data["sigma"])
-    sweep_data["m"] = int(orbit_data["m"])
+    sweep_data["c_hat"] = float(neighborhood_data["c_hat"])
+    sweep_data["sigma"] = float(neighborhood_data["sigma"])
+    sweep_data["m"] = int(neighborhood_data["m"])
     sweep_data["total_time_s"] = total_time
 
     # Save aggregated data

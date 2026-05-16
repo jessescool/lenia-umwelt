@@ -85,7 +85,7 @@ def plot_competency_heatmap(
     ax.set_xticklabels(env_order, rotation=45, ha='right', fontsize=9)
     ax.set_yticks(range(len(creature_order)))
     ax.set_yticklabels(creature_order, fontsize=10)
-    ax.set_title('Competency Score (M): Orbit Residence Fraction', fontsize=12, fontweight='bold')
+    ax.set_title('Competency Score (M): Neighborhood Residence Fraction', fontsize=12, fontweight='bold')
 
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, shrink=0.8)
     cbar.set_label('M (0 = dead/deformed, 1 = fully competent)', fontsize=9)
@@ -119,7 +119,7 @@ def plot_decomposition(
 
     for ax, data, title, label in [
         (ax1, V, 'Viability (V)', 'V: frames alive / total'),
-        (ax2, F, 'Fidelity (F)', 'F: frames in-orbit / alive'),
+        (ax2, F, 'Fidelity (F)', 'F: frames in-neighborhood / alive'),
     ]:
         im = ax.imshow(data, cmap=plt.cm.RdYlGn, vmin=0, vmax=1, aspect='auto')
         for i in range(len(creature_order)):

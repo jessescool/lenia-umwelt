@@ -1,5 +1,5 @@
-# orbits/orbits.py — Jesse Cool (jessescool)
-"""Orbit pipeline: raw frames, profiles, distances, orbit summary."""
+# neighborhoods/neighborhoods.py — Jesse Cool (jessescool)
+"""Neighborhood pipeline: raw frames, profiles, distances, neighborhood summary."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def pairwise_w1(profiles: Tensor, **kwargs) -> Tensor:
     return mat
 
 
-def build_orbit(
+def build_neighborhood(
     creature: Animal,
     scale: int,
     grid_size: int = DEFAULT_GRID,
@@ -78,7 +78,7 @@ def build_orbit(
     creature_base_grid: int | None = None,
 ) -> dict:
     """
-    Collect raw orbit frames for a creature across rotation angles.
+    Collect raw neighborhood frames for a creature across rotation angles.
 
     For each angle: rotate cells -> scale + settle -> record frames.
 
@@ -151,7 +151,7 @@ def build_orbit(
 
 
 def build_profiles(data: dict, verbose: bool = True) -> dict:
-    """Transform raw orbit data into sorted activation profiles."""
+    """Transform raw neighborhood data into sorted activation profiles."""
     frames = data["frames"]              # (R, F, H, W)
 
     R, F, H, W = frames.shape
@@ -186,7 +186,7 @@ def build_profiles(data: dict, verbose: bool = True) -> dict:
 
 
 def build_distances(data: dict, verbose: bool = True) -> dict:
-    """Compute pairwise W1 distance matrix from orbit profiles."""
+    """Compute pairwise W1 distance matrix from neighborhood profiles."""
     profiles = data["trial_profiles"]  # (R, F, m)
     R, F, m = profiles.shape
 
@@ -223,14 +223,14 @@ def compute_c_bar(profiles: Tensor) -> Tensor:
 
 
 def compute_c_hat(profiles: Tensor, c_bar: Tensor) -> tuple[float, float]:
-    """Mean and std of d(c_i, c̄) — orbit radius in profile space."""
+    """Mean and std of d(c_i, c̄) — neighborhood radius in profile space."""
     flat = profiles.reshape(-1, profiles.shape[-1])  # (N, m)
     dists = (flat - c_bar).abs().mean(dim=1)          # L1 distance to c̄
     return dists.mean().item(), dists.std().item()
 
 
-def build_orbit_summary(profile_data: dict) -> dict:
-    """Bundle orbit barycenter and recovery threshold from profile data."""
+def build_neighborhood_summary(profile_data: dict) -> dict:
+    """Bundle neighborhood barycenter and recovery threshold from profile data."""
     profiles = profile_data["trial_profiles"]  # (R, F, m)
 
     c_bar = compute_c_bar(profiles)
@@ -253,7 +253,7 @@ def build_orbit_summary(profile_data: dict) -> dict:
 
 
 def _cmd_raw(args):
-    """Subcommand: build raw orbit frames."""
+    """Subcommand: build raw neighborhood frames."""
     catalog_path = Path(__file__).parent.parent / args.catalog
     creatures = load_animals(catalog_path, codes=[args.code])
     if not creatures:
@@ -264,11 +264,11 @@ def _cmd_raw(args):
     verbose = not args.quiet
     if verbose:
         T = creature.params.get("T", 10)
-        print(f"Building orbit: {args.code} scale={args.scale} grid={args.grid}")
+        print(f"Building neighborhood: {args.code} scale={args.scale} grid={args.grid}")
         print(f"  {args.rotations} rotations × {args.frames} frames")
         print(f"  T={T}, warmup={int(args.warmup_multiplier * T)} steps")
 
-    result = build_orbit(
+    result = build_neighborhood(
         creature,
         scale=args.scale,
         grid_size=args.grid,
@@ -280,7 +280,7 @@ def _cmd_raw(args):
         creature_base_grid=args.creature_base_grid,
     )
 
-    out_dir = Path(args.output_dir) if args.output_dir else Path(f"orbits/{args.code}/s{args.scale}")
+    out_dir = Path(args.output_dir) if args.output_dir else Path(f"neighborhoods/{args.code}/s{args.scale}")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{args.code}_s{args.scale}_raw.pt"
     torch.save(result, out_path)
@@ -353,8 +353,8 @@ def _cmd_distances(args):
         print(f"\nSaved {out_path} ({size_mb:.1f} MB)")
 
 
-def _cmd_orbit(args):
-    """Subcommand: compute orbit summary (c̄ barycenter + ĉ threshold)."""
+def _cmd_neighborhood(args):
+    """Subcommand: compute neighborhood summary (c̄ barycenter + ĉ threshold)."""
     verbose = not args.quiet
     profile_path = Path(args.profile_input)
 
@@ -366,7 +366,7 @@ def _cmd_orbit(args):
         print(f"Loading profiles: {profile_path}")
     profile_data = torch.load(profile_path, weights_only=False)
 
-    result = build_orbit_summary(profile_data)
+    result = build_neighborhood_summary(profile_data)
 
     if verbose:
         print(f"  c̄ shape: {result['c_bar'].shape}")
@@ -379,9 +379,9 @@ def _cmd_orbit(args):
     else:
         stem = profile_path.stem
         if stem.endswith("_profile"):
-            out_stem = stem[:-8] + "_orbit"
+            out_stem = stem[:-8] + "_neighborhood"
         else:
-            out_stem = stem + "_orbit"
+            out_stem = stem + "_neighborhood"
         out_path = profile_path.parent / f"{out_stem}.pt"
 
     torch.save(result, out_path)
@@ -398,11 +398,11 @@ def _cmd_orbit(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Orbit pipeline for Lenia creatures"
+        description="Neighborhood pipeline for Lenia creatures"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_raw = sub.add_parser("raw", help="Build raw orbit frames")
+    p_raw = sub.add_parser("raw", help="Build raw neighborhood frames")
     p_raw.add_argument("--code", "-c", type=str, required=True,
                         help="Creature code (e.g., O2u)")
     p_raw.add_argument("--scale", "-s", type=int, default=1,
@@ -416,7 +416,7 @@ def main():
     p_raw.add_argument("--warmup-multiplier", "-w", type=float, default=DEFAULT_WARMUP_MULT,
                         help=f"Warmup = T * this (default: {DEFAULT_WARMUP_MULT})")
     p_raw.add_argument("--output-dir", "-o", type=str, default=None,
-                        help="Output directory (default: orbits/<code>/s<scale>)")
+                        help="Output directory (default: neighborhoods/<code>/s<scale>)")
     p_raw.add_argument("--catalog", type=str, default="animals.json",
                         help="Creature catalog path")
     p_raw.add_argument("--creature-base-grid", type=int, default=None,
@@ -428,7 +428,7 @@ def main():
 
     p_prof = sub.add_parser("profile", help="Build sorted activation profiles from raw frames")
     p_prof.add_argument("input", type=str,
-                        help="Path to raw orbit .pt file")
+                        help="Path to raw neighborhood .pt file")
     p_prof.add_argument("--output", "-o", type=str, default=None,
                         help="Output filename (default: replaces _raw with _profile)")
     p_prof.add_argument("--quiet", "-q", action="store_true")
@@ -442,13 +442,13 @@ def main():
     p_dist.add_argument("--quiet", "-q", action="store_true")
     p_dist.set_defaults(func=_cmd_distances)
 
-    p_orbit = sub.add_parser("orbit", help="Compute orbit summary (barycenter + recovery threshold)")
-    p_orbit.add_argument("profile_input", type=str,
+    p_neighborhood = sub.add_parser("neighborhood", help="Compute neighborhood summary (barycenter + recovery threshold)")
+    p_neighborhood.add_argument("profile_input", type=str,
                          help="Path to profiles .pt file")
-    p_orbit.add_argument("--output", "-o", type=str, default=None,
-                         help="Output filename (default: <profile_stem>_orbit.pt)")
-    p_orbit.add_argument("--quiet", "-q", action="store_true")
-    p_orbit.set_defaults(func=_cmd_orbit)
+    p_neighborhood.add_argument("--output", "-o", type=str, default=None,
+                         help="Output filename (default: <profile_stem>_neighborhood.pt)")
+    p_neighborhood.add_argument("--quiet", "-q", action="store_true")
+    p_neighborhood.set_defaults(func=_cmd_neighborhood)
 
     args = parser.parse_args()
     args.func(args)

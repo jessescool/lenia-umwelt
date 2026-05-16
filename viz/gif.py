@@ -15,13 +15,27 @@ if TYPE_CHECKING:
     from utils.analysis import Rollout
 
 
-def _build_colormap_lut(colormap_name: str) -> np.ndarray:
+def _build_colormap_lut(
+    colormap_name: str,
+    bg_white: bool = False,
+    top_color: tuple[int, int, int] | None = None,
+) -> np.ndarray:
     """Pre-compute a (256, 3) uint8 lookup table from a matplotlib colormap."""
     cmap = colormaps[colormap_name]
-    # Sample colormap at 256 evenly-spaced points in [0, 1]
     indices = np.linspace(0.0, 1.0, 256)
-    # cmap() returns (256, 4) RGBA float in [0,1]; take RGB, convert to uint8
-    return (cmap(indices)[:, :3] * 255).astype(np.uint8)
+    lut = (cmap(indices)[:, :3] * 255).astype(np.uint8)
+    n_fade = 20
+    if bg_white:
+        target = lut[n_fade].astype(np.float32)
+        t = np.linspace(0.0, 1.0, n_fade)[:, None]
+        white = np.array([255, 255, 255], dtype=np.float32)
+        lut[:n_fade] = (white * (1.0 - t) + target * t).astype(np.uint8)
+    if top_color is not None:
+        source = lut[255 - n_fade].astype(np.float32)
+        target = np.array(top_color, dtype=np.float32)
+        t = np.linspace(0.0, 1.0, n_fade)[:, None]
+        lut[256 - n_fade:] = (source * (1.0 - t) + target * t).astype(np.uint8)
+    return lut
 
 
 def _quantize_and_upscale(rgb_frame: np.ndarray, factor: int) -> Image.Image:
@@ -38,13 +52,15 @@ def _quantize_and_upscale(rgb_frame: np.ndarray, factor: int) -> Image.Image:
 def _to_rgb_batch(
     frames: "Sequence[torch.Tensor] | torch.Tensor | np.ndarray",
     colormap: str = "magma",
+    bg_white: bool = False,
+    top_color: tuple[int, int, int] | None = None,
 ) -> np.ndarray:
     """Convert frames to (T, H, W, 3) uint8 via colormap LUT.
 
     Accepts Sequence[Tensor], Tensor, ndarray, or Rollout (anything torch.stack
     or np.clip can handle).
     """
-    lut = _build_colormap_lut(colormap)
+    lut = _build_colormap_lut(colormap, bg_white=bg_white, top_color=top_color)
     if isinstance(frames, np.ndarray):
         arr = np.clip(frames, 0.0, 1.0)
     else:
@@ -109,12 +125,16 @@ def draw_dot(image: np.ndarray, row: int, col: int, radius: int, color: np.ndarr
                 image[py, px] = color
 
 
-def _apply_barrier_overlay_batch(rgb_batch: np.ndarray, barrier_np: np.ndarray) -> np.ndarray:
+def _apply_barrier_overlay_batch(
+    rgb_batch: np.ndarray,
+    barrier_np: np.ndarray,
+    color: tuple[int, int, int] = (200, 200, 200),
+) -> np.ndarray:
     """Apply barrier overlay to a (N, H, W, 3) batch in-place and return it."""
     mask = barrier_np > 0.5  # (H, W) bool
-    rgb_batch[:, mask, 0] = 200  # R
-    rgb_batch[:, mask, 1] = 200  # G
-    rgb_batch[:, mask, 2] = 200  # B
+    rgb_batch[:, mask, 0] = color[0]
+    rgb_batch[:, mask, 1] = color[1]
+    rgb_batch[:, mask, 2] = color[2]
     return rgb_batch
 
 
@@ -127,13 +147,16 @@ def write_gif(
     upscale: int = 1,
     barrier_mask: torch.Tensor | None = None,
     marker_rect: tuple | None = None,
+    barrier_color: tuple[int, int, int] = (200, 200, 200),
+    bg_white: bool = False,
+    top_color: tuple[int, int, int] | None = None,
 ) -> Path:
     """Write a single-panel GIF from (H, W) tensors."""
-    rgb_batch = _to_rgb_batch(frames, colormap)
+    rgb_batch = _to_rgb_batch(frames, colormap, bg_white=bg_white, top_color=top_color)
 
     if barrier_mask is not None:
         barrier_np = barrier_mask.clamp(0.0, 1.0).cpu().numpy()
-        rgb_batch = _apply_barrier_overlay_batch(rgb_batch, barrier_np)
+        rgb_batch = _apply_barrier_overlay_batch(rgb_batch, barrier_np, barrier_color)
 
     if marker_rect is not None:
         r, c, h, w = marker_rect
