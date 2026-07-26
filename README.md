@@ -10,6 +10,17 @@ All embodied agents are fundamentally patterns in physiological or other excitab
 
 [Our GitHub Pages](jessescool.github.io/lenia-umwelt)
 
+## Selected References
+
+- Rosenblueth, A., Wiener, N., & Bigelow, J. (1943). Behavior, Purpose and Teleology. *Philosophy of Science* 10(1), 18–24. [doi:10.1086/286788](https://doi.org/10.1086/286788)
+- Maturana, H. R., & Varela, F. J. (1980). *Autopoiesis and Cognition: The Realization of the Living*. D. Reidel. [doi:10.1007/978-94-009-8947-4](https://doi.org/10.1007/978-94-009-8947-4)
+- Beer, R. D. (2014). The Cognitive Domain of a Glider in the Game of Life. *Artificial Life* 20(2), 183–206. [doi:10.1162/ARTL_a_00125](https://doi.org/10.1162/ARTL_a_00125)
+- Chan, B. W.-C. (2019). Lenia: Biology of Artificial Life. *Complex Systems* 28(3), 251–286. [doi:10.25088/ComplexSystems.28.3.251](https://doi.org/10.25088/ComplexSystems.28.3.251)
+- Chan, B. W.-C. (2020). Lenia and Expanded Universe. *ALIFE 2020*, 221–229. [doi:10.1162/isal_a_00297](https://doi.org/10.1162/isal_a_00297)
+- Levin, M. (2022). Technological Approach to Mind Everywhere (TAME). *Frontiers in Systems Neuroscience* 16. [doi:10.3389/fnsys.2022.768201](https://doi.org/10.3389/fnsys.2022.768201)
+- Heylighen, F. (2023). The meaning and origin of goal-directedness: a dynamical systems perspective. *Biological Journal of the Linnean Society* 139(4), 370–387. [doi:10.1093/biolinnean/blac060](https://doi.org/10.1093/biolinnean/blac060)
+- Zhang, T., Goldstein, A., & Levin, M. (2024). Classical Sorting Algorithms as a Model of Morphogenesis. *Adaptive Behavior*. [doi:10.1177/10597123241269740](https://doi.org/10.1177/10597123241269740)
+
 ## Project Code
 
 ### Lenia
