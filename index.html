@@ -70,7 +70,7 @@
     <button id="mobileok">View anyway</button>
   </div>
 </div>
-<h1>A minimal Umwelt in Lenia</h1>
+<h1>A minimal Umwelt in <i>Lenia</i></h1>
 <p class="hint">Click to occlude, double-click to place a creature. Switch between transient and fixed occlusions.</p>
 
 <canvas id="c" width="512" height="256"></canvas>
@@ -565,8 +565,13 @@ function toGrid(e) {
 }
 // Undo the tap/click dabs, then drop a creature (shared by double-click and double-tap).
 function placeAt(gx, gy) {
-  while (lastDabs.length)
-    for (const idx of lastDabs.pop()) if (mask[idx]) { mask[idx] = 0; maskCount--; }
+  lastDabs = lastDabs.filter(d => {                        // undo only the dabs at this spot, not
+    if (Math.abs(d.cx - gx) < 20 && Math.abs(d.cy - gy) < 20) {   // dots placed elsewhere earlier
+      for (const idx of d.cells) if (mask[idx]) { mask[idx] = 0; maskCount--; }
+      return false;
+    }
+    return true;
+  });
   if (currentCells) placeCells(currentCells, gx, gy);
 }
 cv.addEventListener("pointerdown", e => {
@@ -592,7 +597,7 @@ cv.addEventListener("pointerup", e => {
   if (!moved) {                                           // a click or tap, not a drag
     if (painting && !erasing) {                           // Fixed: stamp one occlusion dab
       const added = paintMask(cursor.x, cursor.y, false);
-      if (added.length) { lastDabs.push(added); if (lastDabs.length > 2) lastDabs.shift(); markPreset(null); }
+      if (added.length) { lastDabs.push({ cx: cursor.x, cy: cursor.y, cells: added }); if (lastDabs.length > 6) lastDabs.shift(); markPreset(null); }
     }
     if (e.pointerType === "touch") {                      // double-tap places a creature (mouse uses dblclick)
       const t = performance.now();
