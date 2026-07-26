@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A minimal Umwelt in Lenia</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFK0lEQVR42tVXT2wUdRT+3vvNFAoVIS1ULJEYFjo7M20TVzB42Rhj1IsXM14weiDyx4PiQY5yMByMMRElJCToQYwxrsiBg8YDOhhNTFwtdHfaXSox0YKhyr/YAO383vPQKSxlgbaIxpfMZWbe/L73ve/9GWBmRtn1nxhPA3LHPt408t7e3tYgWLM9l8stAqAz8LnOoghmLn6IosgAgO93x2GY/9b3/ZYZAm8MkG6HgUkaiPpd13mYSEorVqxoBSC3+nCxWHSy9zQMvceCwHuxWRpvCuD06dMEAKr6TZpaGGOeWrSo7WChsHxBFEU3jC6KYOI4Tj3PWxME+c8cx/1SFfMzYGY2WSAA8Dxvue93nwkCb6KvL1Tf93Y2pqhJ5AjDNc8GQf73vr5Qg8AbyTR0HQMzUbUBYMOwex+zs9Fae5mIOE11/dDQUHnqOQAUCgW3XC5P5PPdL7mus8taq8xM1totSVLb2/jubDSgAJCmtEdEUlVlInKZ9a3MX6fYKJfLE0GwZpvjmF0ZUBGx/a2tF/ZnbEmz6G4JIIoic+TIkZMdHe0POI4TiNhxxzGrOjravxsd/WPY9/2WOI7TfL57i+O471prUyIyAJQZT/T3/zKSJAlNgZ0tAGTOWLbsnqOAPAfAZSYWEXd09M+Dvu+jra2tmxkHRQREALNxVO2mSqX+RXaOzLkMAUgURVytVgdFdKcx7IqoEnExl8u5cRynRPI2Ec0DIMzGSVP7crVaf69Z3mfNAABKkoRyuVxLrVaP29vbO40x6wBtY6b2Zcs61jHzRlUlY4yxVjYPDtb2FAoF99SpU+kty+wG97lYLFIcx7ZJ7jgIvH4iComIAEBEBEAd0O3Vau0QAAdAOqM6n37wdMoKhcKCsbExDwC5LiCidwH4iIiXi0g6KTZ2x8dNX71eOdbYykulkjQT33UAogimVLp6cE9P/lFVfVwVBSLkALov64pgJqgCqqoASFUtEamq/kDE+1SpnCRJ/7RUNwVC0yJ1L10ae56INgFYy0wQUagqVNUys2FmpGmaAhhn5gWqqkREzIxJPICIKIAyQB+mqZRqtdrJBtHLdYvGypUr57W1tT5DhNdc110lophM6ZVhBFWFiP5GhMOqdjeg40TmMEBLVCUBcEiVthjDi621V8CK2DOq9MbFi5f3njhx4vz0qiAA5Pv+EmZ5BaC1IvoXoEQEVoUSERHxT6pSnz9/4eflcvk8APT2di5M08U/u67bmabjL1Sr9X1h2P0gEb9DROsz5i4DmGeMgbVSIbIbKpX6sUwbdk4bTi6Xmzc8PDzh+95WY3g3AFg7sXnp0nvfj+M4BWDCMP+0KrYZQ+tVARFBlqIxVWytVgf3T6XDmWJicryWbjCWiwQAcRzbrq4uOzw8LIA+dKUm2ayO4zj1fb8lSZLxSmXwEwAHgsDbQERPAnhExC4xxllIRB/4vnd3kgztAWBmy8BUP5/qAz3MBGvt9mq19maxWHTiOLZRBL62onqWEE10qbInoj3GUMHaiVer1eODzhx3SQHQclWkuNA4vLLDKYoiLpVKGBgYOAvgLIAKgE/nMguusTC8vxNAu6rerMloJjTb0FmdbCzzXNdsBiC+v3qdMc73kwOJiEgLAwNDPzar89tdy5ua62JERM4QEYnoOWPSXxuXlzsJQAHg6NHjIwBOOY4BoF/19w+P7tixg/8NAI1+46oqzPpx49Jyx21q6/X97gO+75273X/HWTMQx7FONh98Dejr2didE/3/e/tHftn/BkszY2RpmhNLAAAAAElFTkSuQmCC">
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; margin: 0; }
@@ -23,7 +24,7 @@
   .eqcap { font-size: 0.85rem; color: #444; max-width: 40rem; text-align: left; line-height: 1.5; margin-bottom: 1.4rem; }
   canvas {
     width: min(96vw, 1000px); aspect-ratio: 2 / 1;
-    image-rendering: pixelated; cursor: crosshair; touch-action: none;
+    image-rendering: pixelated; cursor: none; touch-action: none;
     border: 3px solid #000; background: #fff;
   }
   .row { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; align-items: center; }
@@ -41,7 +42,7 @@
   }
   #presets .none { border: 1px dashed #bbb; }
   .panel { display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; }
-  #inset { width: 128px; height: 128px; box-sizing: border-box; border: 2px solid #000; background: #fff; }
+  #inset { width: 128px; height: 128px; box-sizing: border-box; border: 2px solid #000; background: #fff; cursor: default; }
   .sliders {
     display: grid; grid-template-columns: auto 1fr auto;
     gap: 0.35rem 0.7rem; align-items: center;
@@ -57,7 +58,7 @@
 </head>
 <body>
 <h1>A minimal Umwelt in Lenia</h1>
-<p class="hint">Click to occlude. Switch modes to draw fixed occlusions, place creatures, or load preset occlusion environments.</p>
+<p class="hint">Click to occlude, double-click to place a creature. Switch between transient and fixed occlusions.</p>
 
 <canvas id="c" width="512" height="256"></canvas>
 <div id="meta"></div>
@@ -76,7 +77,7 @@
   <label for="mode">Mode</label>
   <select id="mode">
     <option value="run">Transient</option>
-    <option value="playground">Fixed</option>
+    <option value="playground" selected>Fixed</option>
   </select>
   <label for="shape">Brush</label>
   <select id="shape">
@@ -97,16 +98,7 @@
   </div>
 </div>
 
-<div class="row sep" id="toolrow" style="visibility:hidden">
-  <label for="tool">Tool</label>
-  <select id="tool">
-    <option value="draw">Draw occlusion</option>
-    <option value="place">Place creature</option>
-  </select>
-  <button id="clear">Clear occlusion</button>
-</div>
-<div class="row" id="presetrow" style="visibility:hidden">
-  <span>Presets</span>
+<div class="row sep" id="presetrow">
   <span id="presets"></span>
 </div>
 
@@ -256,9 +248,9 @@ let brushShape = "circle";                       // circle | triangle | square
 // Two modes (UI labels "Transient" / "Fixed"). run: a moving occlusion follows
 // the pointer, nothing persists. playground: paint a fixed occlusion mask and
 // drop creatures onto it. The physics reads whichever occlusion through vis.
-let mode = "run", tool = "draw";
-let dragging = false, painting = false, erasing = false;
-let mask = null, maskCount = 0, currentCells = null;
+let mode = "playground";   // default to Fixed
+let dragging = false, painting = false, erasing = false, moved = false, downX = 0, downY = 0;
+let mask = null, maskCount = 0, currentCells = null, lastDabs = [];
 const cursor = { x: 0, y: 0, over: false };
 
 function allocate(w, h) {
@@ -333,14 +325,15 @@ function buildVis() {
 
 // Stamp the brush (current shape and size) into the occlusion mask.
 function paintMask(gx, gy, erase) {
-  const r = brushR();
+  const r = brushR(), touched = [];
   for (let dy = -r; dy <= r; dy++)
     for (let dx = -r; dx <= r; dx++) {
       if (!inShape(dx, dy, r)) continue;
       const idx = wrapIdx(gx + dx, gy + dy);
-      if (erase) { if (mask[idx]) { mask[idx] = 0; maskCount--; } }
-      else if (!mask[idx]) { mask[idx] = 1; maskCount++; }
+      if (erase) { if (mask[idx]) { mask[idx] = 0; maskCount--; touched.push(idx); } }
+      else if (!mask[idx]) { mask[idx] = 1; maskCount++; touched.push(idx); }
     }
+  return touched;
 }
 
 // Drop a decoded creature onto the grid, centred at (cx, cy).
@@ -471,20 +464,13 @@ function drawCursor() {
   if (!cursor.over) return;
   const x = cursor.x + 0.5, y = cursor.y + 0.5, r = brushR();
   ctx.lineWidth = 1;
-  if (mode === "run") {                       // moving occlusion: filled while dragging
+  if (mode === "run") {                        // transient occlusion: filled while dragging
     ctx.beginPath(); brushPath(x, y, r);
     if (dragging) { ctx.fillStyle = "#333"; ctx.fill(); }
     else { ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke(); }
     return;
   }
-  if (tool === "place") {                      // crosshair
-    ctx.strokeStyle = "#1a6ed8";
-    ctx.beginPath();
-    ctx.moveTo(x-4, y); ctx.lineTo(x+4, y); ctx.moveTo(x, y-4); ctx.lineTo(x, y+4);
-    ctx.stroke();
-    return;
-  }
-  ctx.beginPath(); brushPath(x, y, r);         // draw tool: brush outline
+  ctx.beginPath(); brushPath(x, y, r);         // fixed occlusion: brush outline
   ctx.strokeStyle = (painting && erasing) ? "#1a6ed8" : "rgba(0,0,0,0.7)";
   ctx.stroke();
 }
@@ -556,8 +542,9 @@ bind("oc", "ocV", v => occR = v, 0);
 bind("sp", "spV", v => stepsPerSec = v, 0);
 document.getElementById("shape").onchange = e => brushShape = e.target.value;
 
-// Pointer. run (Transient): drag a moving occlusion. playground (Fixed): draw
-// the mask (right-click erases) or drop a creature, depending on the tool.
+// Pointer. Tool decides the action in either mode: Place drops a creature;
+// Occlude sweeps a transient occlusion (Transient) or paints the fixed mask
+// (Fixed; right-click erases).
 function toGrid(e) {
   const r = cv.getBoundingClientRect();
   cursor.x = Math.floor((e.clientX - r.left) / r.width  * W);
@@ -566,24 +553,38 @@ function toGrid(e) {
 cv.addEventListener("pointerdown", e => {
   cv.setPointerCapture(e.pointerId); e.preventDefault();
   cursor.over = true; toGrid(e);
-  if (mode === "run") { dragging = true; return; }
-  if (tool === "place") { if (currentCells) placeCells(currentCells, cursor.x, cursor.y); return; }
-  painting = true; erasing = e.button === 2;
-  paintMask(cursor.x, cursor.y, erasing);
+  if (mode === "run") { dragging = true; return; }        // Transient: moving occlusion
+  painting = true; erasing = e.button === 2;              // Fixed: paint, but only once it's a
+  moved = false; downX = cursor.x; downY = cursor.y;      // real drag (so a double-click can't dab)
+});
+cv.addEventListener("dblclick", e => {                    // double-click drops a creature
+  while (lastDabs.length)                                 // undo the two clicks' dabs, then place
+    for (const idx of lastDabs.pop()) if (mask[idx]) { mask[idx] = 0; maskCount--; }
+  toGrid(e);
+  if (currentCells) placeCells(currentCells, cursor.x, cursor.y);
 });
 cv.addEventListener("pointermove", e => {
   cursor.over = true; toGrid(e);
-  if (painting) paintMask(cursor.x, cursor.y, erasing);   // paint along the drag
+  if (!painting) return;
+  if (!moved && (Math.abs(cursor.x - downX) > 3 || Math.abs(cursor.y - downY) > 3)) {
+    moved = true; markPreset(null);                       // a genuine drag: begin painting
+  }
+  if (moved) paintMask(cursor.x, cursor.y, erasing);
 });
-cv.addEventListener("pointerup",     () => { dragging = false; painting = false; });
+cv.addEventListener("pointerup", () => {
+  if (painting && !moved && !erasing) {                   // a click, not a drag: stamp one dab
+    const added = paintMask(cursor.x, cursor.y, false);
+    if (added.length) { lastDabs.push(added); if (lastDabs.length > 2) lastDabs.shift(); markPreset(null); }
+  }
+  dragging = false; painting = false;
+});
 cv.addEventListener("pointercancel", () => { dragging = false; painting = false; });
 cv.addEventListener("pointerleave",  () => { cursor.over = false; dragging = false; painting = false; });
 cv.addEventListener("contextmenu",   e => e.preventDefault());   // let right-drag erase
 
-const toolRow = document.getElementById("toolrow");
 const presetRow = document.getElementById("presetrow");
 
-// Preset picker: a None tile plus one thumbnail per embedded environment.
+// Preset picker: a Clear tile plus one thumbnail per embedded environment.
 const presetBtns = {};
 function markPreset(name) {
   for (const k in presetBtns) presetBtns[k].classList.toggle("active", k === name);
@@ -596,7 +597,7 @@ function addPreset(name, label, tile) {
   document.getElementById("presets").appendChild(b);
   presetBtns[name] = b;
 }
-addPreset("", "None", '<span class="none"></span>');
+addPreset("", "Clear", '<span class="none"></span>');
 for (const name of Object.keys(ENV.thumbs))
   addPreset(name, name[0].toUpperCase() + name.slice(1), '<img src="' + ENV.thumbs[name] + '" alt="">');
 markPreset("");
@@ -607,14 +608,10 @@ function enterMode(m) {
   mode = m;
   dragging = painting = erasing = false;
   mask.fill(0); maskCount = 0; markPreset("");
-  const show = m === "playground" ? "visible" : "hidden";   // keep the space in Run, just hide
-  toolRow.style.visibility = show;
-  presetRow.style.visibility = show;
+  presetRow.style.visibility = m === "playground" ? "visible" : "hidden";   // keep space in Transient
   load(current);
 }
 document.getElementById("mode").onchange = e => enterMode(e.target.value);
-document.getElementById("tool").onchange = e => tool = e.target.value;
-document.getElementById("clear").onclick = () => { mask.fill(0); maskCount = 0; markPreset(""); };
 
 // Main loop: step at a fixed rate, capped so a slow frame can't trigger a
 // burst of catch-up steps.
