@@ -54,9 +54,22 @@
   #meta { font-size: 0.78rem; color: #666; text-align: center; font-family: monospace; }
   .hint { font-size: 0.8rem; color: #666; text-align: center; max-width: min(96vw, 52rem); line-height: 1.5; }
   footer { font-size: 0.75rem; color: #666; text-align: center; max-width: 40rem; line-height: 1.5; }
+  #mobilenote { display: none; position: fixed; inset: 0; z-index: 100; padding: 1.5rem;
+    background: rgba(255,255,255,0.96); align-items: center; justify-content: center; }
+  #mobilenote > div { max-width: 22rem; text-align: center; }
+  #mobilenote strong { font-size: 1.1rem; }
+  #mobilenote p { font-size: 0.9rem; color: #444; line-height: 1.5; margin: 0.6rem 0 1.1rem; }
+  #mobilenote button { font: inherit; padding: 0.45rem 1.1rem; }
 </style>
 </head>
 <body>
+<div id="mobilenote">
+  <div>
+    <strong>Best on desktop</strong>
+    <p>This interactive is built for a mouse and a larger screen, and runs poorly on phones. For the full experience, open it on a computer.</p>
+    <button id="mobileok">View anyway</button>
+  </div>
+</div>
 <h1>A minimal Umwelt in Lenia</h1>
 <p class="hint">Click to occlude, double-click to place a creature. Switch between transient and fixed occlusions.</p>
 
@@ -250,7 +263,7 @@ let brushShape = "circle";                       // circle | triangle | square
 // drop creatures onto it. The physics reads whichever occlusion through vis.
 let mode = "playground";   // default to Fixed
 let dragging = false, painting = false, erasing = false, moved = false, downX = 0, downY = 0;
-let mask = null, maskCount = 0, currentCells = null, lastDabs = [];
+let mask = null, maskCount = 0, currentCells = null, lastDabs = [], lastTap = 0, tapX = 0, tapY = 0;
 const cursor = { x: 0, y: 0, over: false };
 
 function allocate(w, h) {
@@ -550,34 +563,42 @@ function toGrid(e) {
   cursor.x = Math.floor((e.clientX - r.left) / r.width  * W);
   cursor.y = Math.floor((e.clientY - r.top)  / r.height * H);
 }
+// Undo the tap/click dabs, then drop a creature (shared by double-click and double-tap).
+function placeAt(gx, gy) {
+  while (lastDabs.length)
+    for (const idx of lastDabs.pop()) if (mask[idx]) { mask[idx] = 0; maskCount--; }
+  if (currentCells) placeCells(currentCells, gx, gy);
+}
 cv.addEventListener("pointerdown", e => {
   cv.setPointerCapture(e.pointerId); e.preventDefault();
   cursor.over = true; toGrid(e);
+  moved = false; downX = cursor.x; downY = cursor.y;
   if (mode === "run") { dragging = true; return; }        // Transient: moving occlusion
-  painting = true; erasing = e.button === 2;              // Fixed: paint, but only once it's a
-  moved = false; downX = cursor.x; downY = cursor.y;      // real drag (so a double-click can't dab)
-});
-cv.addEventListener("dblclick", e => {                    // double-click drops a creature
-  while (lastDabs.length)                                 // undo the two clicks' dabs, then place
-    for (const idx of lastDabs.pop()) if (mask[idx]) { mask[idx] = 0; maskCount--; }
-  toGrid(e);
-  if (currentCells) placeCells(currentCells, cursor.x, cursor.y);
+  painting = true; erasing = e.button === 2;              // Fixed: paint once it's a real drag
 });
 cv.addEventListener("pointermove", e => {
   cursor.over = true; toGrid(e);
-  if (!painting) return;
   if (!moved && (Math.abs(cursor.x - downX) > 3 || Math.abs(cursor.y - downY) > 3)) {
-    moved = true; markPreset(null);                       // a genuine drag: begin painting
+    moved = true; if (painting) markPreset(null);         // a genuine drag, not a click/tap
   }
-  if (moved) paintMask(cursor.x, cursor.y, erasing);
+  if (painting && moved) paintMask(cursor.x, cursor.y, erasing);
 });
-cv.addEventListener("pointerup", () => {
-  if (painting && !moved && !erasing) {                   // a click, not a drag: stamp one dab
-    const added = paintMask(cursor.x, cursor.y, false);
-    if (added.length) { lastDabs.push(added); if (lastDabs.length > 2) lastDabs.shift(); markPreset(null); }
+cv.addEventListener("pointerup", e => {
+  if (!moved) {                                           // a click or tap, not a drag
+    if (painting && !erasing) {                           // Fixed: stamp one occlusion dab
+      const added = paintMask(cursor.x, cursor.y, false);
+      if (added.length) { lastDabs.push(added); if (lastDabs.length > 2) lastDabs.shift(); markPreset(null); }
+    }
+    if (e.pointerType === "touch") {                      // double-tap places a creature (mouse uses dblclick)
+      const t = performance.now();
+      if (t - lastTap < 350 && Math.abs(cursor.x - tapX) < 16 && Math.abs(cursor.y - tapY) < 16) {
+        placeAt(cursor.x, cursor.y); lastTap = 0;
+      } else { lastTap = t; tapX = cursor.x; tapY = cursor.y; }
+    }
   }
   dragging = false; painting = false;
 });
+cv.addEventListener("dblclick", e => { toGrid(e); placeAt(cursor.x, cursor.y); });   // mouse double-click
 cv.addEventListener("pointercancel", () => { dragging = false; painting = false; });
 cv.addEventListener("pointerleave",  () => { cursor.over = false; dragging = false; painting = false; });
 cv.addEventListener("contextmenu",   e => e.preventDefault());   // let right-drag erase
@@ -632,7 +653,13 @@ function loop(now) {
 
 buildMenu();
 load(entries[0].idx);
-requestAnimationFrame(loop);
+if (matchMedia("(pointer: coarse)").matches) {           // phone/tablet: warn, start on tap
+  const note = document.getElementById("mobilenote");
+  note.style.display = "flex";
+  document.getElementById("mobileok").onclick = () => { note.style.display = "none"; requestAnimationFrame(loop); };
+} else {
+  requestAnimationFrame(loop);
+}
 </script>
 </body>
 </html>
