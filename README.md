@@ -4,7 +4,7 @@ All embodied agents are fundamentally patterns in physiological or other excitab
 
 ## Paper
 
-**Cool**, Hartl, Levin & Petti — ALIFE 2026 · [arXiv:2605.30708](https://arxiv.org/abs/2605.30708)
+**Cool, J.**, Hartl, B., Levin, M., & Petti, S. (2026). *To appear at ALIFE 2026*. [arXiv:2605.30708](https://arxiv.org/abs/2605.30708)
 
 ## Demo
 
@@ -118,5 +118,4 @@ pip install torch numpy scipy matplotlib imageio tqdm
 
 The pipeline stages above are GPU-heavy — in the paper they ran on a SLURM cluster. A GPU (Nvidia, since we use CUDA) is recommended for full sweeps; a CPU is fine for `run.py` and small single-creature tests.
 
-## Citation
-**coming soon**
+Enjoy!
