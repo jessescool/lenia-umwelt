@@ -1,10 +1,10 @@
-# Agnosiophobia in Lenia
+# A minimal Umwelt in Lenia
 
-Code and data for *Agnosiophobia in a Virtual Agent: behavioral and dynamical architecture in Lenia* (ALIFE 2026 submission).
+All embodied agents are fundamentally patterns in physiological or other excitable media, blurring the distinction between objects and processes. What competencies do these patterns possess? We equip the creatures from Chan's Lenia with the capacity to sense regions of occlusion, via a biologically inspired modification to the update rule. These occlusions act as obstacles and are received in a variety of ways. When not immediately destroyed, many creatures steer away from occlusions — some immediately, some only after turning toward the obstacle. Occlusions can serve to push a creature into a new dynamical regime, changing its morphology and by proxy, its identity. Occasionally, occlusions provoke the generation of a second, identical creature. Response depends jointly on the occlusion's size, shape, and placement relative to the creature's heading and on the parameters of the creature itself.
 
-Authors: **Jesse Cool**, Benedikt Hartl, Michael Levin, Samantha Petti
+## Paper
 
-We subject four Lenia creatures to informational perturbations, occlusions that render parts of their sensory apparatus blind, and ask what their response reveals about their agential and goal-directed status. Creatures avoid regions of low information, a behavior we call **agnosiophobia**, trading heading for morphology. This behavior is neither designed nor selected for. The paper argues that this behavior is visible in the shape of each creature's *basin of attraction* and that novel competencies emerge from the coupling of substrate symmetry and environment, not from either alone. We argue that this is the machinery behind patterns with fixed representations demonstrating competence and goal-directedness when subjected to novel environments.
+**Cool**, Hartl, Levin & Petti — ALIFE 2026 · [arXiv:2605.30708](https://arxiv.org/abs/2605.30708)
 
 ## Lenia
 
