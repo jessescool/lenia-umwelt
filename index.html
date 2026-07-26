@@ -581,7 +581,12 @@ cv.addEventListener("pointermove", e => {
   if (!moved && (Math.abs(cursor.x - downX) > 3 || Math.abs(cursor.y - downY) > 3)) {
     moved = true; if (painting) markPreset(null);         // a genuine drag, not a click/tap
   }
-  if (painting && moved) paintMask(cursor.x, cursor.y, erasing);
+  if (painting && moved) {                                // paint every high-frequency sample, not
+    const r = cv.getBoundingClientRect();                 // just the once-per-frame position
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    for (const ev of (evs.length ? evs : [e]))
+      paintMask(Math.floor((ev.clientX - r.left) / r.width * W), Math.floor((ev.clientY - r.top) / r.height * H), erasing);
+  }
 });
 cv.addEventListener("pointerup", e => {
   if (!moved) {                                           // a click or tap, not a drag
